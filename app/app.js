@@ -7,6 +7,75 @@
    ========================================================= */
 (function(){
 
+/* ================= PIN LOCK ================= */
+const LOCK_KEY = 'pt_pin_hash_v1';
+function pinHash(pin){
+  let h = 0;
+  for(let i=0;i<pin.length;i++){ h = (h*31 + pin.charCodeAt(i)) >>> 0; }
+  return h.toString(36);
+}
+function showLock(mode){
+  const title = document.getElementById('lockTitle');
+  const sub = document.getElementById('lockSub');
+  const confirmInput = document.getElementById('lockPinConfirm');
+  const pinInput = document.getElementById('lockPinInput');
+  document.getElementById('lockError').textContent = '';
+  pinInput.value = '';
+  confirmInput.value = '';
+  if(mode==='set'){
+    title.textContent = 'إنشاء رمز دخول (PIN)';
+    sub.textContent = 'هذا أول تشغيل للتطبيق — اختر رمز دخول من 4 إلى 8 أرقام، وستحتاجه بكل مرة تفتح فيها التطبيق.';
+    confirmInput.style.display = 'block';
+  } else {
+    title.textContent = 'أدخل رمز الدخول';
+    sub.textContent = 'أدخل رمز الـ PIN الخاص بك للمتابعة.';
+    confirmInput.style.display = 'none';
+  }
+  pinInput.focus();
+}
+function handleLockSubmit(){
+  const pin = document.getElementById('lockPinInput').value.trim();
+  const err = document.getElementById('lockError');
+  const stored = localStorage.getItem(LOCK_KEY);
+  if(!/^\d{4,8}$/.test(pin)){ err.textContent = 'الرمز لازم يكون أرقام فقط، بين 4 و 8 خانات.'; return; }
+  if(!stored){
+    const confirmPin = document.getElementById('lockPinConfirm').value.trim();
+    if(pin !== confirmPin){ err.textContent = 'الرمزان غير متطابقين، حاول من جديد.'; return; }
+    localStorage.setItem(LOCK_KEY, pinHash(pin));
+    unlockApp();
+  } else {
+    if(pinHash(pin) === stored){
+      unlockApp();
+    } else {
+      err.textContent = 'رمز غير صحيح، حاول مرة أخرى.';
+      document.getElementById('lockPinInput').value = '';
+      document.getElementById('lockPinInput').focus();
+    }
+  }
+}
+function unlockApp(){
+  document.getElementById('lockScreen').style.display = 'none';
+  document.getElementById('shell').classList.add('unlocked');
+  startApp();
+}
+document.getElementById('lockSubmitBtn').addEventListener('click', handleLockSubmit);
+document.getElementById('lockPinInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){
+    const c = document.getElementById('lockPinConfirm');
+    if(c.style.display!=='none'){ c.focus(); } else { handleLockSubmit(); }
+  }
+});
+document.getElementById('lockPinConfirm').addEventListener('keydown', e=>{ if(e.key==='Enter') handleLockSubmit(); });
+document.getElementById('lockResetBtn').addEventListener('click', ()=>{
+  if(confirm('إعادة تعيين رمز الدخول تمسح الرمز الحالي فقط — بياناتك بالمشاريع ما راح تتأثر إطلاقاً. متابعة؟')){
+    localStorage.removeItem(LOCK_KEY);
+    showLock('set');
+  }
+});
+(function initLock(){
+  showLock(localStorage.getItem(LOCK_KEY) ? 'enter' : 'set');
+})();
+
 /* ================= CATEGORY / FAB META ================= */
 const CAT_PALETTE = ['#4C6E8A','#8A5A3D','#6B5B95','#4C7A5D','#A6763A','#3D7A8A','#8A4C6E','#5B6B3D'];
 const CAT_DEFAULT_SUGGESTIONS = ['الإشراف','المقاولة','الإدارة','التخطيط'];
@@ -35,9 +104,14 @@ function refreshCategoryDatalist(){
 const FAB_META = {
   none:{label:'لم يتم التقديم', cls:'fab-none'},
   pending:{label:'بانتظار التقديم', cls:'fab-pending'},
-  submitted:{label:'تم التقديم', cls:'fab-submitted'}
+  submitted:{label:'تم التقديم', cls:'fab-submitted'},
+  custom:{label:'حالة أخرى', cls:'fab-custom'}
 };
 function isFabApplicable(p){ return p.fab.applicable !== false; }
+function fabDisplayLabel(fab){
+  if(fab.status==='custom'){ return (fab.customText && fab.customText.trim()) ? fab.customText.trim() : FAB_META.custom.label; }
+  return (FAB_META[fab.status] || FAB_META.none).label;
+}
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
 /* ================= DEFAULT SEED DATA ================= */
@@ -172,7 +246,7 @@ function renderSidebarFilters(){
   catBox.querySelectorAll('.cat-item').forEach(el=>el.addEventListener('click',()=>{ activeCat = el.dataset.cat; renderDashboard(); renderSidebarFilters(); }));
 
   const fabBox = document.getElementById('fabFilter');
-  const fcounts = {none:0,pending:0,submitted:0,na:0};
+  const fcounts = {none:0,pending:0,submitted:0,custom:0,na:0};
   PROJECTS.forEach(p=>{ if(isFabApplicable(p)) fcounts[p.fab.status]++; else fcounts.na++; });
   let fhtml = `<div class="cat-item ${activeFab==='all'?'active':''}" data-fab="all">الكل <span style="margin-inline-start:auto;font-size:11px;">${PROJECTS.length}</span></div>`;
   Object.keys(FAB_META).forEach(k=>{
@@ -205,7 +279,7 @@ function renderDashboard(){
     const lastEntry = p.entries[p.entries.length-1];
     const lastPoint = lastEntry ? (lastEntry.points[lastEntry.points.length-1]?.text||'') : '';
     const fabBadge = isFabApplicable(p)
-      ? `<span class="badge ${FAB_META[p.fab.status].cls}">${FAB_META[p.fab.status].label}</span>`
+      ? `<span class="badge ${FAB_META[p.fab.status]?.cls || 'fab-none'}">${esc(fabDisplayLabel(p.fab))}</span>`
       : `<span class="badge fab-na">بدون بنك</span>`;
     return `
     <div class="proj-row" style="border-right-color:${categoryColor(p.category)}" data-id="${p.id}">
@@ -363,7 +437,12 @@ function renderFabTab(p){
   document.getElementById('fabStatus').value = p.fab.status;
   document.getElementById('fabDate').value = p.fab.date || todayISO();
   document.getElementById('fabNote').value = p.fab.note || '';
+  document.getElementById('fabCustomText').value = p.fab.customText || '';
+  document.getElementById('fabCustomTextWrap').style.display = (p.fab.status==='custom') ? 'flex' : 'none';
 }
+document.getElementById('fabStatus').addEventListener('change', (e)=>{
+  document.getElementById('fabCustomTextWrap').style.display = (e.target.value==='custom') ? 'flex' : 'none';
+});
 document.getElementById('fabApplicable').addEventListener('change', (e)=>{
   document.getElementById('fabDetailsWrap').style.display = e.target.checked ? 'block' : 'none';
 });
@@ -373,6 +452,7 @@ document.getElementById('saveFabBtn').addEventListener('click', ()=>{
   p.fab.status = document.getElementById('fabStatus').value;
   p.fab.date = document.getElementById('fabDate').value || todayISO();
   p.fab.note = document.getElementById('fabNote').value;
+  p.fab.customText = document.getElementById('fabCustomText').value;
   saveProjects();
   renderDashboard();
   renderSidebarFilters();
@@ -630,7 +710,7 @@ function buildReportData(fromISO, toISO, onlyUpdated){
     if(onlyUpdated && pointsInRange.length===0) return;
     groups[cat].push({
       id:p.id, owner:p.owner, location:p.location, projId:p.projId, contractor:p.contractor,
-      fab: p.fab.status, fabApplicable: isFabApplicable(p), points: pointsInRange
+      fab: p.fab.status, fabCustomText: p.fab.customText||'', fabApplicable: isFabApplicable(p), points: pointsInRange
     });
   });
   return groups;
@@ -653,13 +733,17 @@ function renderReportHTML(fromISO, toISO, groups, generatedAtISO, extras, opts){
     any = true;
     body += `<div class="rp-cat-title">${esc(catName)} (${items.length})</div>`;
     items.forEach((it,idx)=>{
-      const fabCls = it.fab==='submitted'?'submitted':it.fab==='pending'?'pending':'none';
+      const fabCls = it.fab==='submitted'?'submitted':it.fab==='pending'?'pending':it.fab==='custom'?'custom':'none';
+      const fabLabel = it.fab==='custom' ? (it.fabCustomText && it.fabCustomText.trim() ? it.fabCustomText.trim() : FAB_META.custom.label) : FAB_META[it.fab].label;
       const fabTagHTML = it.fabApplicable
-        ? `<span class="rp-fab-tag ${fabCls}">FAB: ${esc(FAB_META[it.fab].label)}</span>`
+        ? `<span class="rp-fab-tag ${fabCls}">FAB: ${esc(fabLabel)}</span>`
         : '';
       const notesHTML = renderPointsHTML(it.points);
       const editBtnHTML = editable
-        ? `<div class="rp-proj-edit"><button type="button" class="rp-edit-btn" data-proj-id="${it.id}" title="تحرير">✏️</button></div>`
+        ? `<div class="rp-proj-edit">
+             <button type="button" class="rp-edit-btn" data-proj-id="${it.id}" title="تحرير">✏️</button>
+             <button type="button" class="rp-remove-btn" data-proj-id="${it.id}" title="حذف هذا المشروع من التقرير الحالي">🗑</button>
+           </div>`
         : '';
       body += `
         <div class="rp-proj" ${editable?`data-proj-id="${it.id}"`:''}>
@@ -714,6 +798,12 @@ function findItemInModel(projId){
     if(found) return found;
   }
   return null;
+}
+function removeProjFromReportModel(projId){
+  if(!currentReportModel) return;
+  Object.keys(currentReportModel.groups).forEach(k=>{
+    currentReportModel.groups[k] = currentReportModel.groups[k].filter(it=>it.id!==projId);
+  });
 }
 
 function renderPointsEditHTML(points){
@@ -793,6 +883,33 @@ function renderPreview(){
     </div>
     <div class="rp-preview-box">${html}</div>`;
 }
+function buildBlankReportData(){
+  const groups = {};
+  PROJECTS.forEach(p=>{
+    const cat = catOf(p);
+    if(!groups[cat]) groups[cat]=[];
+    groups[cat].push({
+      id:p.id, owner:p.owner, location:p.location, projId:p.projId, contractor:p.contractor,
+      fab: p.fab.status, fabCustomText: p.fab.customText||'', fabApplicable: isFabApplicable(p), points: []
+    });
+  });
+  return groups;
+}
+document.getElementById('newReportBtn').addEventListener('click', ()=>{
+  const from = document.getElementById('rFrom').value;
+  const to = document.getElementById('rTo').value;
+  if(!from || !to){ alert('حدد الفترة أولاً.'); return; }
+  if(!confirm('سيتم فتح تقرير جديد فارغ لكل المشاريع (بأسمائها فقط، بدون أي ملاحظات سابقة). عند الحفظ، سيتم استبدال أي ملاحظات كانت موجودة ضمن هذه الفترة بما تكتبه أنت الآن. متابعة؟')) return;
+  const groups = buildBlankReportData();
+  currentReportModel = { fromISO: from, toISO: to, groups };
+  const html = renderReportHTML(from, to, groups, todayISO(), EXTRAS, {editable:true});
+  document.getElementById('reportPreviewWrap').innerHTML = `
+    <div class="report-toolbar">
+      <button class="btn primary" id="saveReportBtn">💾 حفظ التعديلات</button>
+      <button class="btn" id="printReportBtn">🖨 طباعة</button>
+    </div>
+    <div class="rp-preview-box">${html}</div>`;
+});
 document.getElementById('previewBtn').addEventListener('click', renderPreview);
 
 function commitAndLog(shouldPrint){
@@ -830,6 +947,14 @@ function commitAndLog(shouldPrint){
 document.getElementById('reportPreviewWrap').addEventListener('click', (e)=>{
   const editBtn = e.target.closest('.rp-edit-btn');
   if(editBtn){ toggleEditProj(editBtn.dataset.projId, editBtn); return; }
+  const removeBtn = e.target.closest('.rp-remove-btn');
+  if(removeBtn){
+    if(!confirm('حذف هذا المشروع من هذا التقرير فقط؟ (المشروع نفسه يبقى موجود بالنظام، وبياناته السابقة ما تنحذف — فقط ما يظهر بهذا التقرير)')) return;
+    removeProjFromReportModel(removeBtn.dataset.projId);
+    const block = removeBtn.closest('.rp-proj');
+    if(block) block.remove();
+    return;
+  }
   if(e.target.id==='saveReportBtn'){ commitAndLog(false); return; }
   if(e.target.id==='printReportBtn'){ commitAndLog(true); return; }
 });
@@ -871,6 +996,7 @@ function renderHistory(){
           .rp-fab-tag.none{background:#F5E2DF;color:#A63A31;}
           .rp-fab-tag.pending{background:#F5EBDA;color:#B4802E;}
           .rp-fab-tag.submitted{background:#E4EFE8;color:#2E6B4F;}
+          .rp-fab-tag.custom{background:#EFE6D8;color:#5B4530;}
           .rp-proj-notes{flex:1;min-width:0;}
           .rp-points{margin:0;padding-inline-start:16px;font-size:13px;line-height:1.65;}
           .g{color:#2E6B4F;font-weight:700;} .r{color:#A63A31;font-weight:700;}
@@ -901,12 +1027,12 @@ function renderHistory(){
 }
 
 /* ================= INIT ================= */
-(function init(){
+function startApp(){
   loadAll();
   renderSidebarFilters();
   renderDashboard();
   renderExtras();
   setDefaultReportRange();
-})();
+}
 
 })();

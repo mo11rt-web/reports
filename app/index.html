@@ -10,6 +10,20 @@
 </head>
 <body>
 
+<!-- Lock Screen (PIN) -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <h2 id="lockTitle">أدخل رمز الدخول</h2>
+    <p class="lock-sub" id="lockSub"></p>
+    <input type="password" id="lockPinInput" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="●●●●">
+    <input type="password" id="lockPinConfirm" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="تأكيد الرمز" style="display:none;">
+    <div class="lock-error" id="lockError"></div>
+    <button class="btn primary" id="lockSubmitBtn" style="width:100%;margin-top:6px;">دخول</button>
+    <button class="btn small" id="lockResetBtn" style="margin-top:16px;">نسيت الرمز؟ إعادة تعيين</button>
+  </div>
+</div>
+
 <div id="shell">
   <aside id="sidebar">
     <div class="brand">
@@ -92,6 +106,7 @@
         <div class="field"><label>من تاريخ</label><input type="date" id="rFrom"></div>
         <div class="field"><label>إلى تاريخ</label><input type="date" id="rTo"></div>
         <div class="chk-row"><input type="checkbox" id="rOnlyUpdated" checked> <label for="rOnlyUpdated">إظهار المشاريع المحدّثة فقط ضمن الفترة</label></div>
+        <button class="btn" id="newReportBtn">🆕 تقرير جديد (فارغ)</button>
         <button class="btn primary" id="previewBtn">معاينة التقرير</button>
       </div>
       <div id="reportPreviewWrap"></div>
@@ -161,7 +176,12 @@
               <option value="none">لم يتم التقديم بعد</option>
               <option value="pending">بانتظار التقديم / قيد المراجعة</option>
               <option value="submitted">تم التقديم</option>
+              <option value="custom">حالة أخرى (أدخلها بنفسك)</option>
             </select>
+          </div>
+          <div class="field" id="fabCustomTextWrap" style="display:none;">
+            <label>الحالة المخصّصة</label>
+            <input id="fabCustomText" placeholder="مثال: تم تسليم المشروع كامل">
           </div>
           <div class="field"><label>تاريخ آخر تحديث للحالة</label><input type="date" id="fabDate"></div>
           <div class="field full"><label>ملاحظة (اختياري)</label><textarea id="fabNote" style="min-height:60px;"></textarea></div>
