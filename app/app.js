@@ -329,8 +329,7 @@ function openProject(id){
 function closeModal(){
   document.getElementById('overlay').classList.remove('show');
   currentProjectId = null;
-  renderDashboard();
-  renderSidebarFilters();
+  requestAnimationFrame(()=>{ renderDashboard(); renderSidebarFilters(); });
 }
 function switchMTab(name){
   document.querySelectorAll('.mtab').forEach(b=>b.classList.toggle('active', b.dataset.mtab===name));
