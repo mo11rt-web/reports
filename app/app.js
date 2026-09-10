@@ -170,8 +170,19 @@ let PROJECTS = [];
 let REPORTS = [];
 let EXTRAS = [];
 let currentProjectId = null;
+let infoEditMode = false;
 let activeCat = 'all';
 let activeFab = 'all';
+let projectSaveTimer = null;
+function scheduleProjectSave(){
+  clearTimeout(projectSaveTimer);
+  projectSaveTimer = setTimeout(()=>{ saveProjects(); projectSaveTimer=null; }, 220);
+}
+function flushProjectSave(){
+  if(projectSaveTimer){ clearTimeout(projectSaveTimer); projectSaveTimer=null; }
+  saveProjects();
+}
+window.addEventListener('beforeunload', flushProjectSave);
 
 function loadAll(){
   try{
@@ -303,6 +314,7 @@ function renderDashboard(){
 /* ================= MODAL: PROJECT DETAIL ================= */
 function openProject(id){
   currentProjectId = id;
+  infoEditMode = false;
   const p = getProject(id);
   refreshCategoryDatalist();
   document.getElementById('mTitle').textContent = p.owner;
@@ -326,23 +338,28 @@ function switchMTab(name){
 }
 
 function renderInfoTab(p){
+  const disabled = infoEditMode ? '' : 'disabled';
+  document.getElementById('infoEditStatus').textContent = infoEditMode ? 'وضع التعديل — عدّل ثم اضغط حفظ' : 'وضع العرض';
+  document.getElementById('editInfoBtn').style.display = infoEditMode ? 'none' : 'inline-block';
+  document.getElementById('saveInfoBtn').style.display = infoEditMode ? 'inline-block' : 'none';
   document.getElementById('infoFields').innerHTML = `
-    <div class="field"><label>اسم المالك</label><input id="f_owner" value="${esc(p.owner)}"></div>
-    <div class="field"><label>اسم المقاول</label><input id="f_contractor" value="${esc(p.contractor)}" placeholder="اكتب اسم المقاول"></div>
-    <div class="field"><label>رقم الرخصة</label><input id="f_projId" value="${esc(p.projId)}"></div>
-    <div class="field"><label>نوع الخدمة</label><input id="f_category" list="categoryOptions" placeholder="مثال: الإشراف" value="${esc(p.category||'')}"></div>
-    <div class="field full"><label>الموقع</label><input id="f_location" value="${esc(p.location)}"></div>
-    <div class="field"><label>رقم المشروع الداخلي (اختياري)</label><input id="f_projNo" value="${esc(p.projNo)}"></div>
+    <div class="field"><label>اسم المالك</label><input id="f_owner" value="${esc(p.owner)}" ${disabled}></div>
+    <div class="field"><label>اسم المقاول</label><input id="f_contractor" value="${esc(p.contractor)}" placeholder="اكتب اسم المقاول" ${disabled}></div>
+    <div class="field"><label>رقم الرخصة</label><input id="f_projId" value="${esc(p.projId)}" ${disabled}></div>
+    <div class="field"><label>نوع الخدمة</label><input id="f_category" list="categoryOptions" placeholder="مثال: الإشراف" value="${esc(p.category||'')}" ${disabled}></div>
+    <div class="field full"><label>الموقع</label><input id="f_location" value="${esc(p.location)}" ${disabled}></div>
+    <div class="field"><label>رقم المشروع الداخلي (اختياري)</label><input id="f_projNo" value="${esc(p.projNo)}" ${disabled}></div>
   `;
-  ['f_owner','f_contractor','f_projId','f_category','f_location','f_projNo'].forEach(fid=>{
-    document.getElementById(fid).addEventListener('input', ()=>{
-      const key = fid.slice(2);
-      p[key] = document.getElementById(fid).value;
-      saveProjects();
-      document.getElementById('mTitle').textContent = p.owner;
-      document.getElementById('mSub').textContent = `${p.projId||'بدون رقم رخصة'} · ${catOf(p)}`;
+  if(infoEditMode){
+    ['f_owner','f_contractor','f_projId','f_category','f_location','f_projNo'].forEach(fid=>{
+      document.getElementById(fid).addEventListener('input', ()=>{
+        const key = fid.slice(2);
+        p[key] = document.getElementById(fid).value;
+        document.getElementById('mTitle').textContent = p.owner || 'مشروع';
+        document.getElementById('mSub').textContent = `${p.projId||'بدون رقم رخصة'} · ${catOf(p)}`;
+      });
     });
-  });
+  }
   document.getElementById('deleteProjectBtn').onclick = ()=>{
     if(confirm('هل أنت متأكد من حذف هذا المشروع نهائياً؟')){
       PROJECTS = PROJECTS.filter(x=>x.id!==p.id);
@@ -351,6 +368,26 @@ function renderInfoTab(p){
     }
   };
 }
+function beginInfoEdit(){
+  if(!getProject(currentProjectId)) return;
+  infoEditMode = true;
+  renderInfoTab(getProject(currentProjectId));
+  const first = document.getElementById('f_owner'); if(first) first.focus();
+}
+function saveInfoChanges(){
+  const p = getProject(currentProjectId); if(!p) return;
+  ['owner','contractor','projId','category','location','projNo'].forEach(key=>{
+    const el = document.getElementById('f_'+key); if(el) p[key]=el.value.trim();
+  });
+  flushProjectSave();
+  renderDashboard(); renderSidebarFilters(); refreshCategoryDatalist();
+  infoEditMode = false;
+  renderInfoTab(p);
+  document.getElementById('mTitle').textContent = p.owner || 'مشروع';
+  document.getElementById('mSub').textContent = `${p.projId||'بدون رقم رخصة'} · ${catOf(p)}`;
+}
+document.getElementById('editInfoBtn').addEventListener('click', beginInfoEdit);
+document.getElementById('saveInfoBtn').addEventListener('click', saveInfoChanges);
 
 let selectedColor = 'default';
 function renderLogTab(p){
@@ -423,8 +460,8 @@ function renderFieldsTab(p){
       </div>`).join('');
     wrap.querySelectorAll('.cf-row').forEach(row=>{
       const idx = parseInt(row.dataset.idx);
-      row.querySelector('.cf-label').addEventListener('input', e=>{ p.customFields[idx].label = e.target.value; saveProjects(); });
-      row.querySelector('.cf-value').addEventListener('input', e=>{ p.customFields[idx].value = e.target.value; saveProjects(); });
+      row.querySelector('.cf-label').addEventListener('input', e=>{ p.customFields[idx].label = e.target.value; scheduleProjectSave(); });
+      row.querySelector('.cf-value').addEventListener('input', e=>{ p.customFields[idx].value = e.target.value; scheduleProjectSave(); });
       row.querySelector('.cf-del').addEventListener('click', ()=>{ p.customFields.splice(idx,1); saveProjects(); renderFieldsTab(p); });
     });
   }
@@ -459,13 +496,10 @@ function syncFabFields(showMessage=false){
   p.fab.date = document.getElementById('fabDate').value || todayISO();
   p.fab.note = document.getElementById('fabNote').value;
   p.fab.customText = document.getElementById('fabCustomText').value;
-  saveProjects(); renderDashboard(); renderSidebarFilters();
+  flushProjectSave();
+  renderDashboard(); renderSidebarFilters();
   if(showMessage) alert('تم حفظ حالة الدفعات.');
 }
-['fabApplicable','fabStatus','fabDate','fabNote','fabCustomText'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', ()=>syncFabFields(false));
-  document.getElementById(id).addEventListener('change', ()=>syncFabFields(false));
-});
 document.getElementById('saveFabBtn').addEventListener('click', ()=>syncFabFields(true));
 
 document.querySelectorAll('.mtab').forEach(b=>b.addEventListener('click',()=>switchMTab(b.dataset.mtab)));
