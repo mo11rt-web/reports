@@ -365,12 +365,18 @@ function renderLogTab(p){
         <ul class="point-list">
           ${entry.points.map((pt,idx)=>`
             <li class="point-item ${pt.color==='green'?'pt-green':pt.color==='red'?'pt-red':''}">
-              <span class="point-text">${esc(pt.text)}</span>
+              <input class="point-text point-edit-input" value="${esc(pt.text)}" data-date="${entry.date}" data-idx="${idx}" aria-label="تعديل نقطة التحديث">
               <button class="point-del" data-date="${entry.date}" data-idx="${idx}" title="حذف">✕</button>
             </li>`).join('')}
         </ul>
       </div>
     `).join('');
+    wrap.querySelectorAll('.point-edit-input').forEach(input=>{
+      input.addEventListener('input', ()=>{
+        const entry = p.entries.find(e=>e.date===input.dataset.date);
+        if(entry && entry.points[parseInt(input.dataset.idx)]){ entry.points[parseInt(input.dataset.idx)].text = input.value; saveProjects(); }
+      });
+    });
     wrap.querySelectorAll('.point-del').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const entry = p.entries.find(e=>e.date===btn.dataset.date);
@@ -446,37 +452,45 @@ document.getElementById('fabStatus').addEventListener('change', (e)=>{
 document.getElementById('fabApplicable').addEventListener('change', (e)=>{
   document.getElementById('fabDetailsWrap').style.display = e.target.checked ? 'block' : 'none';
 });
-document.getElementById('saveFabBtn').addEventListener('click', ()=>{
-  const p = getProject(currentProjectId);
+function syncFabFields(showMessage=false){
+  const p = getProject(currentProjectId); if(!p) return;
   p.fab.applicable = document.getElementById('fabApplicable').checked;
   p.fab.status = document.getElementById('fabStatus').value;
   p.fab.date = document.getElementById('fabDate').value || todayISO();
   p.fab.note = document.getElementById('fabNote').value;
   p.fab.customText = document.getElementById('fabCustomText').value;
-  saveProjects();
-  renderDashboard();
-  renderSidebarFilters();
-  alert('تم حفظ حالة الدفعات.');
+  saveProjects(); renderDashboard(); renderSidebarFilters();
+  if(showMessage) alert('تم حفظ حالة الدفعات.');
+}
+['fabApplicable','fabStatus','fabDate','fabNote','fabCustomText'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>syncFabFields(false));
+  document.getElementById(id).addEventListener('change', ()=>syncFabFields(false));
 });
+document.getElementById('saveFabBtn').addEventListener('click', ()=>syncFabFields(true));
 
 document.querySelectorAll('.mtab').forEach(b=>b.addEventListener('click',()=>switchMTab(b.dataset.mtab)));
 document.getElementById('closeModal').addEventListener('click', closeModal);
 document.getElementById('overlay').addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeModal(); });
 
 /* ================= ADD PROJECT ================= */
-document.getElementById('addProjectBtn').addEventListener('click', ()=>{
-  const owner = prompt('اسم المالك؟');
-  if(!owner) return;
-  const np = {
-    id:'p_'+Date.now().toString(36),
-    owner, projNo:'', projId:'', category:'الإشراف', location:'', contractor:'',
-    customFields:[], entries:[], fab:{status:'none', date:'', note:''}
-  };
-  PROJECTS.push(np);
-  saveProjects();
-  renderDashboard(); renderSidebarFilters();
-  openProject(np.id);
+function resetAddProjectForm(){
+  ['newOwner','newContractor','newProjId','newLocation','newProjNo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('newCategory').value='الإشراف';
+  document.getElementById('addProjectError').textContent='';
+}
+function openAddProject(){ resetAddProjectForm(); document.getElementById('addOverlay').classList.add('show'); setTimeout(()=>document.getElementById('newOwner').focus(),50); }
+function closeAddProject(){ document.getElementById('addOverlay').classList.remove('show'); }
+document.getElementById('addProjectBtn').addEventListener('click', openAddProject);
+document.getElementById('closeAddModal').addEventListener('click', closeAddProject);
+document.getElementById('cancelAddProject').addEventListener('click', closeAddProject);
+document.getElementById('addOverlay').addEventListener('click', e=>{ if(e.target.id==='addOverlay') closeAddProject(); });
+document.getElementById('saveNewProject').addEventListener('click', ()=>{
+  const owner=document.getElementById('newOwner').value.trim();
+  if(!owner){ document.getElementById('addProjectError').textContent='اكتب اسم المالك أولاً.'; document.getElementById('newOwner').focus(); return; }
+  const np={id:'p_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), owner, projNo:document.getElementById('newProjNo').value.trim(), projId:document.getElementById('newProjId').value.trim(), category:document.getElementById('newCategory').value.trim(), location:document.getElementById('newLocation').value.trim(), contractor:document.getElementById('newContractor').value.trim(), customFields:[], entries:[], fab:{status:'none',date:'',note:'',applicable:true}};
+  PROJECTS.push(np); saveProjects(); renderDashboard(); renderSidebarFilters(); closeAddProject(); openProject(np.id);
 });
+document.getElementById('newOwner').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('saveNewProject').click(); });
 
 /* ================= TABS (dashboard/report/history) ================= */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -651,6 +665,16 @@ document.getElementById('applyImportBtn').addEventListener('click', ()=>{
   });
   saveProjects();
   renderDashboard(); renderSidebarFilters();
+  if(applied>0){
+    const fromISO=date, toISO=date;
+    const groups=buildReportData(fromISO,toISO,false);
+    currentReportModel={fromISO,toISO,groups};
+    const finalHTML=renderReportHTML(fromISO,toISO,groups,todayISO(),EXTRAS,{editable:false});
+    REPORTS.push({id:'r_'+Date.now().toString(36),createdAt:todayISO(),from:fromISO,to:toISO,snapshotHTML:finalHTML,source:'import'});
+    saveReports();
+    document.getElementById('rFrom').value=fromISO; document.getElementById('rTo').value=toISO;
+    document.getElementById('reportPreviewWrap').innerHTML=`<div class="report-toolbar"><button class="btn primary" id="saveReportBtn">💾 حفظ التعديلات</button><button class="btn" id="printReportBtn">🖨 طباعة</button></div><div class="rp-preview-box">${renderReportHTML(fromISO,toISO,groups,todayISO(),EXTRAS,{editable:true})}</div>`;
+  }
   document.getElementById('importPanel').classList.remove('show');
   document.getElementById('importText').value = '';
   document.getElementById('importPreview').innerHTML = '';

@@ -194,6 +194,25 @@
   </div>
 </div>
 
+<!-- Add Project Modal -->
+<div class="overlay" id="addOverlay">
+  <div class="modal add-modal">
+    <div class="modal-head"><div><h2>إضافة مشروع جديد</h2><div class="sub">أدخل البيانات الأساسية ويمكنك استكمالها لاحقاً.</div></div><button class="modal-close" id="closeAddModal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field"><label>اسم المالك *</label><input id="newOwner" autofocus></div>
+        <div class="field"><label>اسم المقاول</label><input id="newContractor"></div>
+        <div class="field"><label>رقم الرخصة</label><input id="newProjId"></div>
+        <div class="field"><label>نوع الخدمة</label><input id="newCategory" list="categoryOptions" value="الإشراف"></div>
+        <div class="field full"><label>الموقع</label><input id="newLocation"></div>
+        <div class="field"><label>رقم المشروع الداخلي</label><input id="newProjNo"></div>
+      </div>
+      <div class="add-modal-actions"><button class="btn" id="cancelAddProject">إلغاء</button><button class="btn primary" id="saveNewProject">إضافة المشروع</button></div>
+      <div class="lock-error" id="addProjectError"></div>
+    </div>
+  </div>
+</div>
+
 <div id="printArea"></div>
 <datalist id="categoryOptions"></datalist>
 

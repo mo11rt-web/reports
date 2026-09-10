@@ -132,6 +132,8 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;}
 }
 .overlay.show{display:flex;}
 .modal{background:var(--surface);border-radius:6px;width:100%;max-width:760px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.add-modal{max-width:680px;}
+.add-modal-actions{display:flex;justify-content:flex-start;gap:8px;margin-top:22px;}
 .modal-head{
   padding:18px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;
   position:sticky;top:0;background:var(--surface);border-radius:6px 6px 0 0;
@@ -182,6 +184,8 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;}
 .point-item.pt-green::before{color:var(--ok);border-color:var(--ok);}
 .point-item.pt-red::before{color:var(--danger);border-color:var(--danger);}
 .point-text{flex:1;font-size:13.5px;line-height:1.55;padding-top:1px;}
+.point-edit-input{width:100%;border:1px solid transparent;background:transparent;font-family:inherit;color:inherit;padding:1px 4px;border-radius:3px;}
+.point-edit-input:hover,.point-edit-input:focus{border-color:var(--line);background:var(--surface);outline:none;}
 .point-del{background:none;border:none;color:var(--ink-soft);font-size:15px;padding:0 4px;flex:none;}
 .point-del:hover{color:var(--danger);}
 
