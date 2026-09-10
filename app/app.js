@@ -261,7 +261,7 @@ function renderInfoTab(p){
     <div class="field"><label>رقم المشروع الداخلي (اختياري)</label><input id="f_projNo" value="${esc(p.projNo)}"></div>
   `;
   ['f_owner','f_contractor','f_projId','f_category','f_location','f_projNo'].forEach(fid=>{
-    document.getElementById(fid).addEventListener('change', ()=>{
+    document.getElementById(fid).addEventListener('input', ()=>{
       const key = fid.slice(2);
       p[key] = document.getElementById(fid).value;
       saveProjects();
@@ -343,8 +343,8 @@ function renderFieldsTab(p){
       </div>`).join('');
     wrap.querySelectorAll('.cf-row').forEach(row=>{
       const idx = parseInt(row.dataset.idx);
-      row.querySelector('.cf-label').addEventListener('change', e=>{ p.customFields[idx].label = e.target.value; saveProjects(); });
-      row.querySelector('.cf-value').addEventListener('change', e=>{ p.customFields[idx].value = e.target.value; saveProjects(); });
+      row.querySelector('.cf-label').addEventListener('input', e=>{ p.customFields[idx].label = e.target.value; saveProjects(); });
+      row.querySelector('.cf-value').addEventListener('input', e=>{ p.customFields[idx].value = e.target.value; saveProjects(); });
       row.querySelector('.cf-del').addEventListener('click', ()=>{ p.customFields.splice(idx,1); saveProjects(); renderFieldsTab(p); });
     });
   }
@@ -597,8 +597,8 @@ function renderExtras(){
   `).join('');
   wrap.querySelectorAll('.extra-row').forEach(row=>{
     const idx = parseInt(row.dataset.idx);
-    row.querySelector('.extra-title').addEventListener('change', e=>{ EXTRAS[idx].title = e.target.value; saveExtras(); });
-    row.querySelector('.extra-text').addEventListener('change', e=>{ EXTRAS[idx].text = e.target.value; saveExtras(); });
+    row.querySelector('.extra-title').addEventListener('input', e=>{ EXTRAS[idx].title = e.target.value; saveExtras(); });
+    row.querySelector('.extra-text').addEventListener('input', e=>{ EXTRAS[idx].text = e.target.value; saveExtras(); });
     row.querySelector('.extra-del').addEventListener('click', ()=>{ EXTRAS.splice(idx,1); saveExtras(); renderExtras(); });
   });
 }
