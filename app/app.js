@@ -8,12 +8,30 @@
 (function(){
 
 /* ================= CATEGORY / FAB META ================= */
-const CATS = {
-  sup:{label:'الإشراف', cls:'sup'},
-  con:{label:'المقاولة', cls:'con'},
-  mgmt:{label:'الإدارة', cls:'mgmt'},
-  plan:{label:'التخطيط', cls:'plan'}
-};
+const CAT_PALETTE = ['#4C6E8A','#8A5A3D','#6B5B95','#4C7A5D','#A6763A','#3D7A8A','#8A4C6E','#5B6B3D'];
+const CAT_DEFAULT_SUGGESTIONS = ['الإشراف','المقاولة','الإدارة','التخطيط'];
+const NO_CAT_LABEL = 'بدون تصنيف';
+function categoryColor(catText){
+  const s = (catText||'').trim();
+  if(!s) return '#9C9689';
+  let hash = 0;
+  for(let i=0;i<s.length;i++){ hash = (hash*31 + s.charCodeAt(i)) >>> 0; }
+  return CAT_PALETTE[hash % CAT_PALETTE.length];
+}
+function catOf(p){ return (p.category && p.category.trim()) ? p.category.trim() : NO_CAT_LABEL; }
+function getDistinctCategories(){
+  const set = new Set();
+  PROJECTS.forEach(p=>{ if(p.category && p.category.trim()) set.add(p.category.trim()); });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b,'ar'));
+}
+function getSuggestedCategories(){
+  return Array.from(new Set([...CAT_DEFAULT_SUGGESTIONS, ...getDistinctCategories()]));
+}
+function refreshCategoryDatalist(){
+  const dl = document.getElementById('categoryOptions');
+  if(!dl) return;
+  dl.innerHTML = getSuggestedCategories().map(c=>`<option value="${esc(c)}"></option>`).join('');
+}
 const FAB_META = {
   none:{label:'لم يتم التقديم', cls:'fab-none'},
   pending:{label:'بانتظار التقديم', cls:'fab-pending'},
@@ -61,9 +79,10 @@ function seedProjects(){
   ['العامر كرامه العامري','AUH-065','B1N-2024-015936','plan','Plot No.5A, Sector MSH21, Shakhbout City'],
   ['حنان المصعبي / احمد الجعيدي','AUH-071','','plan','Plot No.421, Sector SH35, Al Shamkhah'],
   ];
+  const SEED_CAT_LABELS = {sup:'الإشراف', con:'المقاولة', mgmt:'الإدارة', plan:'التخطيط'};
   return raw.map((r,i)=>({
     id:'p'+(i+1)+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    owner:r[0], projNo:r[1], projId:r[2], category:r[3], location:r[4],
+    owner:r[0], projNo:r[1], projId:r[2], category: SEED_CAT_LABELS[r[3]] || r[3], location:r[4],
     contractor:'',
     customFields:[],
     entries:[], // {date:'YYYY-MM-DD', points:[{text,color}]}
@@ -89,6 +108,13 @@ function loadAll(){
     console.error('load projects failed, reseeding', e);
     PROJECTS = seedProjects(); saveProjects();
   }
+  // ترحيل تلقائي: تحويل أكواد التصنيف القديمة (sup/con/mgmt/plan) لنص عربي مقروء
+  const LEGACY_CAT_MAP = {sup:'الإشراف', con:'المقاولة', mgmt:'الإدارة', plan:'التخطيط'};
+  let migrated = false;
+  PROJECTS.forEach(p=>{
+    if(LEGACY_CAT_MAP[p.category]){ p.category = LEGACY_CAT_MAP[p.category]; migrated = true; }
+  });
+  if(migrated) saveProjects();
   try{
     const raw2 = localStorage.getItem('pt_reports_v2');
     if(raw2){ REPORTS = JSON.parse(raw2); }
@@ -135,11 +161,12 @@ function normalizeAr(s){
 /* ================= SIDEBAR ================= */
 function renderSidebarFilters(){
   const catBox = document.getElementById('catFilter');
-  const counts = {sup:0,con:0,mgmt:0,plan:0};
-  PROJECTS.forEach(p=>{ if(counts[p.category]!==undefined) counts[p.category]++; });
+  const counts = {};
+  PROJECTS.forEach(p=>{ const c=catOf(p); counts[c]=(counts[c]||0)+1; });
+  const catList = Object.keys(counts).sort((a,b)=>a.localeCompare(b,'ar'));
   let html = `<div class="cat-item ${activeCat==='all'?'active':''}" data-cat="all"><span class="dot" style="background:var(--ink-soft)"></span> الكل <span style="margin-inline-start:auto;font-size:11px;">${PROJECTS.length}</span></div>`;
-  Object.keys(CATS).forEach(k=>{
-    html += `<div class="cat-item ${activeCat===k?'active':''}" data-cat="${k}"><span class="dot ${CATS[k].cls}"></span> ${CATS[k].label} <span style="margin-inline-start:auto;font-size:11px;">${counts[k]||0}</span></div>`;
+  catList.forEach(c=>{
+    html += `<div class="cat-item ${activeCat===c?'active':''}" data-cat="${esc(c)}"><span class="dot" style="background:${categoryColor(c)}"></span> ${esc(c)} <span style="margin-inline-start:auto;font-size:11px;">${counts[c]||0}</span></div>`;
   });
   catBox.innerHTML = html;
   catBox.querySelectorAll('.cat-item').forEach(el=>el.addEventListener('click',()=>{ activeCat = el.dataset.cat; renderDashboard(); renderSidebarFilters(); }));
@@ -160,7 +187,7 @@ function renderSidebarFilters(){
 function renderDashboard(){
   const q = (document.getElementById('searchBox').value||'').trim().toLowerCase();
   let list = PROJECTS.filter(p=>{
-    if(activeCat!=='all' && p.category!==activeCat) return false;
+    if(activeCat!=='all' && catOf(p)!==activeCat) return false;
     if(activeFab!=='all'){
       if(activeFab==='na'){ if(isFabApplicable(p)) return false; }
       else { if(!isFabApplicable(p) || p.fab.status!==activeFab) return false; }
@@ -181,7 +208,7 @@ function renderDashboard(){
       ? `<span class="badge ${FAB_META[p.fab.status].cls}">${FAB_META[p.fab.status].label}</span>`
       : `<span class="badge fab-na">بدون بنك</span>`;
     return `
-    <div class="proj-row cat-${p.category}" data-id="${p.id}">
+    <div class="proj-row" style="border-right-color:${categoryColor(p.category)}" data-id="${p.id}">
       <div class="proj-main">
         <div class="proj-owner">${esc(p.owner)}</div>
         <div class="proj-meta">
@@ -203,8 +230,9 @@ function renderDashboard(){
 function openProject(id){
   currentProjectId = id;
   const p = getProject(id);
+  refreshCategoryDatalist();
   document.getElementById('mTitle').textContent = p.owner;
-  document.getElementById('mSub').textContent = `${p.projId||'بدون رقم رخصة'} · ${CATS[p.category].label}`;
+  document.getElementById('mSub').textContent = `${p.projId||'بدون رقم رخصة'} · ${catOf(p)}`;
   switchMTab('info');
   renderInfoTab(p);
   renderLogTab(p);
@@ -224,12 +252,11 @@ function switchMTab(name){
 }
 
 function renderInfoTab(p){
-  const catOptions = Object.keys(CATS).map(k=>`<option value="${k}" ${p.category===k?'selected':''}>${CATS[k].label}</option>`).join('');
   document.getElementById('infoFields').innerHTML = `
     <div class="field"><label>اسم المالك</label><input id="f_owner" value="${esc(p.owner)}"></div>
     <div class="field"><label>اسم المقاول</label><input id="f_contractor" value="${esc(p.contractor)}" placeholder="اكتب اسم المقاول"></div>
     <div class="field"><label>رقم الرخصة</label><input id="f_projId" value="${esc(p.projId)}"></div>
-    <div class="field"><label>نوع الخدمة</label><select id="f_category">${catOptions}</select></div>
+    <div class="field"><label>نوع الخدمة</label><input id="f_category" list="categoryOptions" placeholder="مثال: الإشراف" value="${esc(p.category||'')}"></div>
     <div class="field full"><label>الموقع</label><input id="f_location" value="${esc(p.location)}"></div>
     <div class="field"><label>رقم المشروع الداخلي (اختياري)</label><input id="f_projNo" value="${esc(p.projNo)}"></div>
   `;
@@ -239,7 +266,7 @@ function renderInfoTab(p){
       p[key] = document.getElementById(fid).value;
       saveProjects();
       document.getElementById('mTitle').textContent = p.owner;
-      document.getElementById('mSub').textContent = `${p.projId||'بدون رقم رخصة'} · ${CATS[p.category].label}`;
+      document.getElementById('mSub').textContent = `${p.projId||'بدون رقم رخصة'} · ${catOf(p)}`;
     });
   });
   document.getElementById('deleteProjectBtn').onclick = ()=>{
@@ -362,7 +389,7 @@ document.getElementById('addProjectBtn').addEventListener('click', ()=>{
   if(!owner) return;
   const np = {
     id:'p_'+Date.now().toString(36),
-    owner, projNo:'', projId:'', category:'sup', location:'', contractor:'',
+    owner, projNo:'', projId:'', category:'الإشراف', location:'', contractor:'',
     customFields:[], entries:[], fab:{status:'none', date:'', note:''}
   };
   PROJECTS.push(np);
@@ -578,8 +605,9 @@ function setDefaultReportRange(){
 
 function buildReportData(fromISO, toISO, onlyUpdated){
   const groups = {};
-  Object.keys(CATS).forEach(k=>groups[k]=[]);
   PROJECTS.forEach(p=>{
+    const cat = catOf(p);
+    if(!groups[cat]) groups[cat]=[];
     const pointsInRange = [];
     p.entries.forEach(entry=>{
       if(entry.date>=fromISO && entry.date<=toISO){
@@ -587,7 +615,7 @@ function buildReportData(fromISO, toISO, onlyUpdated){
       }
     });
     if(onlyUpdated && pointsInRange.length===0) return;
-    groups[p.category].push({
+    groups[cat].push({
       id:p.id, owner:p.owner, location:p.location, projId:p.projId, contractor:p.contractor,
       fab: p.fab.status, fabApplicable: isFabApplicable(p), points: pointsInRange
     });
@@ -606,11 +634,11 @@ function renderReportHTML(fromISO, toISO, groups, generatedAtISO, extras, opts){
   const editable = !!opts.editable;
   let body = '';
   let any = false;
-  Object.keys(CATS).forEach(k=>{
-    const items = groups[k];
+  Object.keys(groups).sort((a,b)=>a.localeCompare(b,'ar')).forEach(catName=>{
+    const items = groups[catName];
     if(!items || items.length===0) return;
     any = true;
-    body += `<div class="rp-cat-title">${CATS[k].label} (${items.length})</div>`;
+    body += `<div class="rp-cat-title">${esc(catName)} (${items.length})</div>`;
     items.forEach((it,idx)=>{
       const fabCls = it.fab==='submitted'?'submitted':it.fab==='pending'?'pending':'none';
       const fabTagHTML = it.fabApplicable
