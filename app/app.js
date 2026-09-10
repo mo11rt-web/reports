@@ -306,9 +306,10 @@ function renderDashboard(){
       <div class="proj-actions"><button class="btn small open-btn">فتح</button></div>
     </div>`;
   }).join('');
-  wrap.querySelectorAll('.proj-row').forEach(el=>{
-    el.addEventListener('click',()=>openProject(el.dataset.id));
-  });
+  wrap.onclick = (e)=>{
+    const row = e.target.closest('.proj-row');
+    if(row && getProject(row.dataset.id)) openProject(row.dataset.id);
+  };
 }
 
 /* ================= MODAL: PROJECT DETAIL ================= */
@@ -513,7 +514,6 @@ function resetAddProjectForm(){
 }
 function openAddProject(){ resetAddProjectForm(); document.getElementById('addOverlay').classList.add('show'); setTimeout(()=>document.getElementById('newOwner').focus(),50); }
 function closeAddProject(){ document.getElementById('addOverlay').classList.remove('show'); }
-document.getElementById('addProjectBtn').addEventListener('click', openAddProject);
 document.getElementById('closeAddModal').addEventListener('click', closeAddProject);
 document.getElementById('cancelAddProject').addEventListener('click', closeAddProject);
 document.getElementById('addOverlay').addEventListener('click', e=>{ if(e.target.id==='addOverlay') closeAddProject(); });
@@ -524,6 +524,9 @@ document.getElementById('saveNewProject').addEventListener('click', ()=>{
   PROJECTS.push(np); saveProjects(); renderDashboard(); renderSidebarFilters(); closeAddProject(); openProject(np.id);
 });
 document.getElementById('newOwner').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('saveNewProject').click(); });
+document.addEventListener('click', e=>{
+  if(e.target.closest('#addProjectBtn')){ e.preventDefault(); openAddProject(); return; }
+});
 
 /* ================= TABS (dashboard/report/history) ================= */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
