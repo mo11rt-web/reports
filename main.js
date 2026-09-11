@@ -9,6 +9,7 @@ function createWindow() {
     minHeight: 640,
     title: 'متابعة المشاريع',
     show: false,
+    backgroundColor: '#F4F1EA',
     autoHideMenuBar: true, // يخفي شريط القوائم العلوي بصرياً، لكن يبقي اختصارات لوحة المفاتيح تعمل بالخلفية
     webPreferences: {
       contextIsolation: true,

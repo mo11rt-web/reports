@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>متابعة المشاريع</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -46,6 +44,15 @@
       <div class="side-title">حالة دفعات FAB</div>
       <div class="cat-filter" id="fabFilter"></div>
     </div>
+
+    <div class="side-block">
+      <div class="side-title">نسخة احتياطية</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn small" id="exportBackupBtn">⬇️ تصدير نسخة احتياطية</button>
+        <button class="btn small" id="importBackupBtn">⬆️ استرجاع من ملف</button>
+        <input type="file" id="importBackupFile" accept="application/json" style="display:none;">
+      </div>
+    </div>
   </aside>
 
   <main id="main">
@@ -58,6 +65,9 @@
       </div>
       <div class="search-row">
         <input type="text" id="searchBox" placeholder="ابحث باسم المالك أو الموقع أو المقاول...">
+        <label class="followup-toggle" for="followUpFilter">
+          <input type="checkbox" id="followUpFilter"> ⚠️ يحتاج متابعة فقط
+        </label>
       </div>
       <div class="proj-list" id="projList"></div>
     </section>
@@ -128,7 +138,12 @@
   <div class="modal">
     <div class="modal-head">
       <div><h2 id="mTitle">مشروع</h2><div class="sub" id="mSub"></div></div>
-      <button class="modal-close" id="closeModal">✕</button>
+      <div class="modal-nav">
+        <button class="btn small" id="prevProjectBtn" title="المشروع السابق">◀ السابق</button>
+        <span class="modal-nav-pos" id="modalNavPos"></span>
+        <button class="btn small" id="nextProjectBtn" title="المشروع التالي">التالي ▶</button>
+        <button class="modal-close" id="closeModal">✕</button>
+      </div>
     </div>
     <div class="modal-body">
       <div class="mtabs">

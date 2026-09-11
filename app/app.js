@@ -173,6 +173,8 @@ let currentProjectId = null;
 let infoEditMode = false;
 let activeCat = 'all';
 let activeFab = 'all';
+let followUpOnly = false;
+let visibleProjectIds = [];
 let projectSaveTimer = null;
 function scheduleProjectSave(){
   clearTimeout(projectSaveTimer);
@@ -268,21 +270,45 @@ function renderSidebarFilters(){
   fabBox.querySelectorAll('.cat-item').forEach(el=>el.addEventListener('click',()=>{ activeFab = el.dataset.fab; renderDashboard(); renderSidebarFilters(); }));
 }
 
+/* ================= FOLLOW-UP CHECK ================= */
+const FOLLOWUP_DAYS_THRESHOLD = 7;
+function getLastUpdateDate(p){
+  let lastDate = null;
+  p.entries.forEach(e=>{ if(!lastDate || e.date>lastDate) lastDate = e.date; });
+  return lastDate;
+}
+function hasRedFlag(p){
+  return p.entries.some(e=> e.points.some(pt=>pt.color==='red'));
+}
+function needsFollowUp(p){
+  const lastDate = getLastUpdateDate(p);
+  let daysSince = null;
+  if(lastDate){
+    daysSince = Math.floor((new Date(todayISO()+'T00:00:00') - new Date(lastDate+'T00:00:00')) / 86400000);
+  }
+  const stale = lastDate===null || daysSince>=FOLLOWUP_DAYS_THRESHOLD;
+  const red = hasRedFlag(p);
+  return { flag: stale || red, stale, red, daysSince };
+}
+
 /* ================= DASHBOARD ================= */
 function renderDashboard(){
   const q = (document.getElementById('searchBox').value||'').trim().toLowerCase();
+  followUpOnly = document.getElementById('followUpFilter').checked;
   let list = PROJECTS.filter(p=>{
     if(activeCat!=='all' && catOf(p)!==activeCat) return false;
     if(activeFab!=='all'){
       if(activeFab==='na'){ if(isFabApplicable(p)) return false; }
       else { if(!isFabApplicable(p) || p.fab.status!==activeFab) return false; }
     }
+    if(followUpOnly && !needsFollowUp(p).flag) return false;
     if(q){
       const hay = (p.owner+' '+p.location+' '+p.contractor+' '+p.projId).toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
   });
+  visibleProjectIds = list.map(p=>p.id);
   document.getElementById('dashSub').textContent = `${list.length} من أصل ${PROJECTS.length} مشروع`;
   const wrap = document.getElementById('projList');
   if(list.length===0){ wrap.innerHTML = '<div class="empty-note">لا توجد نتائج مطابقة.</div>'; return; }
@@ -292,6 +318,11 @@ function renderDashboard(){
     const fabBadge = isFabApplicable(p)
       ? `<span class="badge ${FAB_META[p.fab.status]?.cls || 'fab-none'}">${esc(fabDisplayLabel(p.fab))}</span>`
       : `<span class="badge fab-na">بدون بنك</span>`;
+    const fu = needsFollowUp(p);
+    const followUpTitle = fu.stale && fu.red ? 'لا يوجد تحديث منذ فترة، ويحتوي على نقطة مهمة حمراء'
+      : fu.stale ? (fu.daysSince===null ? 'لا يوجد أي تحديث بعد' : `لا يوجد تحديث منذ ${fu.daysSince} يوم`)
+      : 'يحتوي على نقطة مهمة حمراء تحتاج متابعة';
+    const followUpBadge = fu.flag ? `<span class="badge follow-up-badge" title="${esc(followUpTitle)}">⚠️ يحتاج متابعة</span>` : '';
     return `
     <div class="proj-row" style="border-right-color:${categoryColor(p.category)}" data-id="${p.id}">
       <div class="proj-main">
@@ -302,6 +333,7 @@ function renderDashboard(){
         </div>
         ${lastPoint?`<div style="font-size:12px;color:var(--ink-soft);margin-top:5px;">آخر تحديث: ${esc(lastPoint)}</div>`:''}
       </div>
+      ${followUpBadge}
       ${fabBadge}
       <div class="proj-actions"><button class="btn small open-btn">فتح</button></div>
     </div>`;
@@ -311,6 +343,7 @@ function renderDashboard(){
     if(row && getProject(row.dataset.id)) openProject(row.dataset.id);
   };
 }
+document.getElementById('followUpFilter').addEventListener('change', renderDashboard);
 
 /* ================= MODAL: PROJECT DETAIL ================= */
 function openProject(id){
@@ -320,6 +353,7 @@ function openProject(id){
   refreshCategoryDatalist();
   document.getElementById('mTitle').textContent = p.owner;
   document.getElementById('mSub').textContent = `${p.projId||'بدون رقم رخصة'} · ${catOf(p)}`;
+  updateModalNav();
   switchMTab('info');
   renderInfoTab(p);
   renderLogTab(p);
@@ -327,6 +361,22 @@ function openProject(id){
   renderFabTab(p);
   document.getElementById('overlay').classList.add('show');
 }
+function updateModalNav(){
+  const idx = visibleProjectIds.indexOf(currentProjectId);
+  const total = visibleProjectIds.length;
+  document.getElementById('modalNavPos').textContent = (idx>=0 && total>0) ? `${idx+1} / ${total}` : '';
+  document.getElementById('prevProjectBtn').disabled = !(total>1);
+  document.getElementById('nextProjectBtn').disabled = !(total>1);
+}
+function navigateProject(direction){
+  if(visibleProjectIds.length===0) return;
+  let idx = visibleProjectIds.indexOf(currentProjectId);
+  if(idx===-1) idx = 0;
+  const newIdx = (idx + direction + visibleProjectIds.length) % visibleProjectIds.length;
+  openProject(visibleProjectIds[newIdx]);
+}
+document.getElementById('prevProjectBtn').addEventListener('click', ()=>navigateProject(-1));
+document.getElementById('nextProjectBtn').addEventListener('click', ()=>navigateProject(1));
 function closeModal(){
   document.getElementById('overlay').classList.remove('show');
   currentProjectId = null;
@@ -1085,6 +1135,56 @@ function renderHistory(){
     });
   });
 }
+
+/* ================= BACKUP / RESTORE ================= */
+function downloadJSON(filename, dataObj){
+  const blob = new Blob([JSON.stringify(dataObj, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+document.getElementById('exportBackupBtn').addEventListener('click', ()=>{
+  const payload = {
+    appBackupVersion: 1,
+    exportedAt: todayISO(),
+    projects: PROJECTS,
+    reports: REPORTS,
+    extras: EXTRAS
+  };
+  downloadJSON(`نسخة-احتياطية-متابعة-المشاريع-${todayISO()}.json`, payload);
+});
+document.getElementById('importBackupBtn').addEventListener('click', ()=>{
+  document.getElementById('importBackupFile').click();
+});
+document.getElementById('importBackupFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data || !Array.isArray(data.projects)) throw new Error('صيغة الملف غير صحيحة أو غير مطابقة لنسخة احتياطية معروفة.');
+      const count = data.projects.length;
+      const ok = confirm(`سيتم استبدال كل البيانات الحالية (كل المشاريع والتقارير والبنود الإضافية) بمحتوى هذا الملف (${count} مشروع). هذا الإجراء لا يمكن التراجع عنه. هل أنت متأكد؟`);
+      if(!ok) return;
+      PROJECTS = data.projects || [];
+      REPORTS = Array.isArray(data.reports) ? data.reports : [];
+      EXTRAS = Array.isArray(data.extras) ? data.extras : [];
+      saveProjects(); saveReports(); saveExtras();
+      renderDashboard(); renderSidebarFilters(); renderExtras();
+      alert('تم استرجاع النسخة الاحتياطية بنجاح.');
+    }catch(err){
+      alert('تعذّر قراءة الملف: '+err.message);
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'utf-8');
+});
 
 /* ================= INIT ================= */
 function startApp(){
