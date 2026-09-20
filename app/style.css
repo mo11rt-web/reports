@@ -242,9 +242,9 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;}
 .hist-main .d2{font-size:12px;color:var(--ink-soft);}
 
 /* =========================================================
-   شكل التقرير (المعاينة + الطباعة/PDF) — خط Calibri + زخرفة إسلامية خفيفة
+   شكل التقرير (المعاينة + الطباعة/PDF) — خط Calibri
    ========================================================= */
-#printArea,#printWm{display:none;}
+#printArea{display:none;}
 
 .rp-page{
   font-family:Calibri,Carlito,'Segoe UI',Tahoma,Arial,sans-serif;
@@ -252,7 +252,6 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;}
 }
 /* الترويسة */
 .rp-header{text-align:center;padding:0 0 12px;margin:0 0 14px;border-bottom:3px double #7A5C3E;}
-.rp-orn{display:block;margin:0 auto 4px;width:220px;height:20px;}
 .rp-header h1{font-size:24px;font-weight:700;color:#5B4530;margin:2px 0 9px;}
 .rp-meta{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 10px;}
 .rp-chip{border:1px solid rgba(122,92,62,.5);border-radius:999px;padding:3px 15px;font-size:12.5px;color:#4a3b2a;background:rgba(239,230,216,.6);}
@@ -265,10 +264,6 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;}
   font-size:15.5px;font-weight:700;color:#fff;background:#7A5C3E;
   padding:6px 13px;margin:18px 0 6px;border-radius:3px;
   break-after:avoid;page-break-after:avoid;
-}
-.rp-cat-title::before{
-  content:'';flex:none;width:13px;height:13px;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 20 20' fill='none' stroke='white' stroke-width='1.6'%3E%3Crect x='-6' y='-6' width='12' height='12'/%3E%3Crect x='-6' y='-6' width='12' height='12' transform='rotate(45)'/%3E%3C/svg%3E") center/contain no-repeat;
 }
 /* صف المشروع */
 .rp-proj{display:flex;gap:18px;padding:9px 4px 10px;border-bottom:1px dotted rgba(122,92,62,.45);break-inside:avoid;page-break-inside:avoid;}
@@ -296,29 +291,16 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;}
 
 /* -------- الطباعة / PDF -------- */
 @media print{
-  @page{size:A4 portrait;margin:0;}
+  @page{size:A4 portrait;margin:14mm;}
   /* إخفاء التطبيق بالكامل من التخطيط (مو بس بصرياً) — هذا اللي كان يسبّب الصفحات الفاضية */
-  body>*:not(#printArea):not(#printWm){display:none !important;}
+  body>*:not(#printArea){display:none !important;}
   html,body{background:#fff !important;height:auto !important;min-height:0 !important;margin:0 !important;padding:0 !important;overflow:visible !important;}
-  #printArea{display:block !important;position:relative;z-index:1;margin:0;padding:0;}
-  #printArea,#printArea *,#printWm,#printWm *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  #printArea{display:block !important;margin:0;padding:0;}
+  #printArea,#printArea *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .rp-page{min-height:0 !important;}
-  /* هوامش الصفحة تتكرر بكل صفحة عبر thead/tfoot (لأن الهامش الحقيقي صفر حتى تغطي الزخرفة كامل الورقة) */
-  .pa-table{width:100%;border-collapse:collapse;border:0;}
-  .pa-table td{padding:0;border:0;}
-  .pa-sp{height:14mm;}
-  .pa-body{padding:0 15mm !important;}
-  /* الخلفية الزخرفية: عنصر ثابت يتكرر خلف كل صفحة ويغطي كامل الورقة */
-  #printWm{display:block;position:fixed;top:0;bottom:0;left:0;right:0;z-index:0;pointer-events:none;}
-  #printWm .wm-pattern,#printWm .wm-frame{position:absolute;inset:0;}
-  #printWm .wm-pattern{background-image:var(--wm-pattern);background-size:26mm 26mm;background-position:center top;}
-  #printWm .wm-frame{background-image:var(--wm-frame);background-size:100% 100%;background-repeat:no-repeat;}
 }
 
-/* report edit toolbar + inline editing */
-.report-toolbar{display:flex;gap:10px;margin-bottom:12px;}
-/* معاينة التقرير داخل التطبيق: نفس الزخرفة الخفيفة */
-.rp-preview-box{background:#fff;background-image:var(--wm-pattern);background-size:26mm 26mm;border:1px solid var(--line);border-radius:4px;padding:22px 28px;overflow-x:auto;}
+.rp-preview-box{background:#fff;border:1px solid var(--line);border-radius:4px;padding:22px 28px;overflow-x:auto;}
 .rp-proj-edit{flex:0 0 auto;display:flex;align-items:flex-start;padding-top:2px;gap:6px;}
 .rp-edit-btn{background:none;border:1px solid var(--line);border-radius:4px;width:27px;height:27px;font-size:13px;cursor:pointer;color:var(--ink-soft);}
 .rp-edit-btn:hover{border-color:var(--brand);color:var(--brand-dark);}

@@ -7,30 +7,6 @@
    ========================================================= */
 (function(){
 
-/* ================= زخرفة التقرير (خلفية إسلامية خفيفة) ================= */
-const WM_TILE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="#7A5C3E" stroke-width="1" stroke-opacity=".17">
-<g transform="translate(48 48)"><rect x="-22" y="-22" width="44" height="44"/><rect x="-22" y="-22" width="44" height="44" transform="rotate(45)"/><circle r="9"/><rect x="-4" y="-4" width="8" height="8" transform="rotate(45)"/></g>
-<path d="M79.1 48H96M0 48H16.9M48 79.1V96M48 0V16.9M26 26L7 7M70 26L89 7M26 70L7 89M70 70L89 89"/>
-<path d="M0 -4L4 0L0 4L-4 0Z" transform="translate(0 48)"/><path d="M0 -4L4 0L0 4L-4 0Z" transform="translate(96 48)"/><path d="M0 -4L4 0L0 4L-4 0Z" transform="translate(48 0)"/><path d="M0 -4L4 0L0 4L-4 0Z" transform="translate(48 96)"/>
-<g><path d="M0 -9L2.6 -2.6L9 0L2.6 2.6L0 9L-2.6 2.6L-9 0L-2.6 -2.6Z" transform="translate(0 0)"/><path d="M0 -9L2.6 -2.6L9 0L2.6 2.6L0 9L-2.6 2.6L-9 0L-2.6 -2.6Z" transform="translate(96 0)"/><path d="M0 -9L2.6 -2.6L9 0L2.6 2.6L0 9L-2.6 2.6L-9 0L-2.6 -2.6Z" transform="translate(0 96)"/><path d="M0 -9L2.6 -2.6L9 0L2.6 2.6L0 9L-2.6 2.6L-9 0L-2.6 -2.6Z" transform="translate(96 96)"/></g>
-</svg>`;
-const WM_FRAME_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" preserveAspectRatio="none" fill="none" stroke="#7A5C3E">
-<style>*{vector-effect:non-scaling-stroke}</style>
-<rect x="6" y="6" width="198" height="285" stroke-width="1" stroke-opacity=".38"/>
-<rect x="8.2" y="8.2" width="193.6" height="280.6" stroke-width=".6" stroke-opacity=".28"/>
-<g stroke-opacity=".4" stroke-width=".9">
-<g transform="translate(6 6)"><path d="M0 12A12 12 0 0 0 12 0"/><path d="M0 7A7 7 0 0 0 7 0"/><path d="M0 -3.4L1.1 -1.1L3.4 0L1.1 1.1L0 3.4L-1.1 1.1L-3.4 0L-1.1 -1.1Z" fill="#7A5C3E" fill-opacity=".3"/></g>
-<g transform="translate(204 6) scale(-1 1)"><path d="M0 12A12 12 0 0 0 12 0"/><path d="M0 7A7 7 0 0 0 7 0"/><path d="M0 -3.4L1.1 -1.1L3.4 0L1.1 1.1L0 3.4L-1.1 1.1L-3.4 0L-1.1 -1.1Z" fill="#7A5C3E" fill-opacity=".3"/></g>
-<g transform="translate(6 291) scale(1 -1)"><path d="M0 12A12 12 0 0 0 12 0"/><path d="M0 7A7 7 0 0 0 7 0"/><path d="M0 -3.4L1.1 -1.1L3.4 0L1.1 1.1L0 3.4L-1.1 1.1L-3.4 0L-1.1 -1.1Z" fill="#7A5C3E" fill-opacity=".3"/></g>
-<g transform="translate(204 291) scale(-1 -1)"><path d="M0 12A12 12 0 0 0 12 0"/><path d="M0 7A7 7 0 0 0 7 0"/><path d="M0 -3.4L1.1 -1.1L3.4 0L1.1 1.1L0 3.4L-1.1 1.1L-3.4 0L-1.1 -1.1Z" fill="#7A5C3E" fill-opacity=".3"/></g>
-</g></svg>`;
-const REPORT_ORN_SVG = `<svg class="rp-orn" viewBox="0 0 220 20" width="220" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#7A5C3E"><path d="M6 10H88M132 10H214" stroke-width="1"/><path d="M92 10L96 6M92 10L96 14M128 10L124 6M128 10L124 14" stroke-width=".9"/><g transform="translate(110 10)" stroke-width="1.2"><rect x="-6.5" y="-6.5" width="13" height="13"/><rect x="-6.5" y="-6.5" width="13" height="13" transform="rotate(45)"/><circle r="2" fill="#7A5C3E" stroke="none"/></g><circle cx="5" cy="10" r="1.7" fill="#7A5C3E" stroke="none"/><circle cx="215" cy="10" r="1.7" fill="#7A5C3E" stroke="none"/></svg>`;
-(function initReportArt(){
-  const uri = svg => 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
-  const root = document.documentElement.style;
-  root.setProperty('--wm-pattern', uri(WM_TILE_SVG));
-  root.setProperty('--wm-frame', uri(WM_FRAME_SVG));
-})();
 window.addEventListener('afterprint', ()=>{ const pa=document.getElementById('printArea'); if(pa) pa.innerHTML=''; });
 
 /* ================= PIN LOCK ================= */
@@ -937,7 +913,6 @@ function renderReportHTML(fromISO, toISO, groups, generatedAtISO, extras, opts){
   return `
     <div class="rp-page">
       <div class="rp-header">
-        ${REPORT_ORN_SVG}
         <h1>التقرير الأسبوعي لحالة المشاريع</h1>
         <div class="rp-meta">
           <span class="rp-chip"><b>الفترة</b>من ${fmtDateAr(fromISO)} إلى ${fmtDateAr(toISO)}</span>
@@ -1112,9 +1087,7 @@ document.getElementById('reportDateOverlay').addEventListener('keydown', e=>{
 });
 
 function fillPrintArea(html){
-  const sp = '<tr><td><div class="pa-sp"></div></td></tr>';
-  document.getElementById('printArea').innerHTML =
-    '<table class="pa-table"><thead>'+sp+'</thead><tbody><tr><td class="pa-body">'+html+'</td></tr></tbody><tfoot>'+sp+'</tfoot></table>';
+  document.getElementById('printArea').innerHTML = html;
 }
 
 function commitAndLog(shouldPrint, dates){
