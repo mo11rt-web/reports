@@ -7,6 +7,32 @@
    ========================================================= */
 (function(){
 
+/* ================= زخرفة التقرير (خلفية إسلامية خفيفة) ================= */
+const WM_TILE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="#7A5C3E" stroke-width="1" stroke-opacity=".17">
+<g transform="translate(48 48)"><rect x="-22" y="-22" width="44" height="44"/><rect x="-22" y="-22" width="44" height="44" transform="rotate(45)"/><circle r="9"/><rect x="-4" y="-4" width="8" height="8" transform="rotate(45)"/></g>
+<path d="M79.1 48H96M0 48H16.9M48 79.1V96M48 0V16.9M26 26L7 7M70 26L89 7M26 70L7 89M70 70L89 89"/>
+<path d="M0 -4L4 0L0 4L-4 0Z" transform="translate(0 48)"/><path d="M0 -4L4 0L0 4L-4 0Z" transform="translate(96 48)"/><path d="M0 -4L4 0L0 4L-4 0Z" transform="translate(48 0)"/><path d="M0 -4L4 0L0 4L-4 0Z" transform="translate(48 96)"/>
+<g><path d="M0 -9L2.6 -2.6L9 0L2.6 2.6L0 9L-2.6 2.6L-9 0L-2.6 -2.6Z" transform="translate(0 0)"/><path d="M0 -9L2.6 -2.6L9 0L2.6 2.6L0 9L-2.6 2.6L-9 0L-2.6 -2.6Z" transform="translate(96 0)"/><path d="M0 -9L2.6 -2.6L9 0L2.6 2.6L0 9L-2.6 2.6L-9 0L-2.6 -2.6Z" transform="translate(0 96)"/><path d="M0 -9L2.6 -2.6L9 0L2.6 2.6L0 9L-2.6 2.6L-9 0L-2.6 -2.6Z" transform="translate(96 96)"/></g>
+</svg>`;
+const WM_FRAME_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" preserveAspectRatio="none" fill="none" stroke="#7A5C3E">
+<style>*{vector-effect:non-scaling-stroke}</style>
+<rect x="6" y="6" width="198" height="285" stroke-width="1" stroke-opacity=".38"/>
+<rect x="8.2" y="8.2" width="193.6" height="280.6" stroke-width=".6" stroke-opacity=".28"/>
+<g stroke-opacity=".4" stroke-width=".9">
+<g transform="translate(6 6)"><path d="M0 12A12 12 0 0 0 12 0"/><path d="M0 7A7 7 0 0 0 7 0"/><path d="M0 -3.4L1.1 -1.1L3.4 0L1.1 1.1L0 3.4L-1.1 1.1L-3.4 0L-1.1 -1.1Z" fill="#7A5C3E" fill-opacity=".3"/></g>
+<g transform="translate(204 6) scale(-1 1)"><path d="M0 12A12 12 0 0 0 12 0"/><path d="M0 7A7 7 0 0 0 7 0"/><path d="M0 -3.4L1.1 -1.1L3.4 0L1.1 1.1L0 3.4L-1.1 1.1L-3.4 0L-1.1 -1.1Z" fill="#7A5C3E" fill-opacity=".3"/></g>
+<g transform="translate(6 291) scale(1 -1)"><path d="M0 12A12 12 0 0 0 12 0"/><path d="M0 7A7 7 0 0 0 7 0"/><path d="M0 -3.4L1.1 -1.1L3.4 0L1.1 1.1L0 3.4L-1.1 1.1L-3.4 0L-1.1 -1.1Z" fill="#7A5C3E" fill-opacity=".3"/></g>
+<g transform="translate(204 291) scale(-1 -1)"><path d="M0 12A12 12 0 0 0 12 0"/><path d="M0 7A7 7 0 0 0 7 0"/><path d="M0 -3.4L1.1 -1.1L3.4 0L1.1 1.1L0 3.4L-1.1 1.1L-3.4 0L-1.1 -1.1Z" fill="#7A5C3E" fill-opacity=".3"/></g>
+</g></svg>`;
+const REPORT_ORN_SVG = `<svg class="rp-orn" viewBox="0 0 220 20" width="220" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#7A5C3E"><path d="M6 10H88M132 10H214" stroke-width="1"/><path d="M92 10L96 6M92 10L96 14M128 10L124 6M128 10L124 14" stroke-width=".9"/><g transform="translate(110 10)" stroke-width="1.2"><rect x="-6.5" y="-6.5" width="13" height="13"/><rect x="-6.5" y="-6.5" width="13" height="13" transform="rotate(45)"/><circle r="2" fill="#7A5C3E" stroke="none"/></g><circle cx="5" cy="10" r="1.7" fill="#7A5C3E" stroke="none"/><circle cx="215" cy="10" r="1.7" fill="#7A5C3E" stroke="none"/></svg>`;
+(function initReportArt(){
+  const uri = svg => 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+  const root = document.documentElement.style;
+  root.setProperty('--wm-pattern', uri(WM_TILE_SVG));
+  root.setProperty('--wm-frame', uri(WM_FRAME_SVG));
+})();
+window.addEventListener('afterprint', ()=>{ const pa=document.getElementById('printArea'); if(pa) pa.innerHTML=''; });
+
 /* ================= PIN LOCK ================= */
 const LOCK_KEY = 'pt_pin_hash_v1';
 function pinHash(pin){
@@ -176,62 +202,85 @@ let activeFab = 'all';
 let followUpOnly = false;
 let visibleProjectIds = [];
 let projectSaveTimer = null;
+/* لا نكتب أي شي بالتخزين قبل ما تنقرأ البيانات فعلياً (بعد إدخال الـ PIN).
+   قبل هذا الإصلاح: لو أغلقت التطبيق وهو على شاشة القفل كان يكتب قائمة مشاريع فاضية فوق بياناتك! */
+let DATA_LOADED = false;
 function scheduleProjectSave(){
   clearTimeout(projectSaveTimer);
   projectSaveTimer = setTimeout(()=>{ saveProjects(); projectSaveTimer=null; }, 220);
 }
 function flushProjectSave(){
   if(projectSaveTimer){ clearTimeout(projectSaveTimer); projectSaveTimer=null; }
-  saveProjects();
+  if(DATA_LOADED) saveProjects();
 }
 window.addEventListener('beforeunload', flushProjectSave);
 
-function loadAll(){
+/* قراءة قائمة من التخزين. لو كانت تالفة نحتفظ بنسخة منها قبل ما نكتب فوقها. */
+function readStoredList(key, label, corruptLabels){
+  const raw = localStorage.getItem(key);
+  if(raw === null) return null;
   try{
-    const raw = localStorage.getItem('pt_projects_v2');
-    if(raw){ PROJECTS = JSON.parse(raw); }
-    else { PROJECTS = seedProjects(); saveProjects(); }
+    const v = JSON.parse(raw);
+    if(!Array.isArray(v)) throw new Error('not an array');
+    return v;
   }catch(e){
-    console.error('load projects failed, reseeding', e);
-    PROJECTS = seedProjects(); saveProjects();
+    console.error('stored data is corrupted: '+key, e);
+    try{
+      const stash = key+'_corrupt_'+Date.now();
+      localStorage.setItem(stash, raw);
+      Object.keys(localStorage).filter(k=>k.startsWith(key+'_corrupt_') && k!==stash).forEach(k=>localStorage.removeItem(k));
+    }catch(_){}
+    corruptLabels.push(label);
+    return null;
   }
+}
+
+function loadAll(){
+  const corrupt = [];
+  const p = readStoredList('pt_projects_v2', 'المشاريع', corrupt);
+  const r = readStoredList('pt_reports_v2', 'سجل التقارير', corrupt);
+  const x = readStoredList('pt_extras_v1', 'البنود الإضافية', corrupt);
+  PROJECTS = p || seedProjects();
+  REPORTS = r || [];
+  EXTRAS = x || seedExtras();
   // ترحيل تلقائي: تحويل أكواد التصنيف القديمة (sup/con/mgmt/plan) لنص عربي مقروء
   const LEGACY_CAT_MAP = {sup:'الإشراف', con:'المقاولة', mgmt:'الإدارة', plan:'التخطيط'};
   let migrated = false;
-  PROJECTS.forEach(p=>{
-    if(LEGACY_CAT_MAP[p.category]){ p.category = LEGACY_CAT_MAP[p.category]; migrated = true; }
+  PROJECTS.forEach(pr=>{
+    if(LEGACY_CAT_MAP[pr.category]){ pr.category = LEGACY_CAT_MAP[pr.category]; migrated = true; }
   });
-  if(migrated) saveProjects();
-  try{
-    const raw2 = localStorage.getItem('pt_reports_v2');
-    if(raw2){ REPORTS = JSON.parse(raw2); }
-    else { REPORTS = []; saveReports(); }
-  }catch(e){
-    REPORTS = []; saveReports();
-  }
-  try{
-    const raw3 = localStorage.getItem('pt_extras_v1');
-    if(raw3){ EXTRAS = JSON.parse(raw3); }
-    else { EXTRAS = seedExtras(); saveExtras(); }
-  }catch(e){
-    EXTRAS = seedExtras(); saveExtras();
+  DATA_LOADED = true;
+  if(p===null || migrated) saveProjects();
+  if(r===null) saveReports();
+  if(x===null) saveExtras();
+  if(corrupt.length){
+    setTimeout(()=>alert('تنبيه: بيانات ('+corrupt.join('، ')+') كانت تالفة وتعذّرت قراءتها.\nتم الاحتفاظ بنسخة منها داخل تخزين التطبيق ولم تُمسح، ويمكنك استرجاع نسخة احتياطية من الزر «⬆️ استرجاع من ملف».'), 50);
   }
 }
+const STORAGE_FULL_MSG = 'تعذّر الحفظ: مساحة التخزين المحلية ممتلئة أو غير متاحة.\nصدّر نسخة احتياطية الآن (⬇️ تصدير نسخة احتياطية) ثم احذف التقارير القديمة من «سجل التقارير» لتفريغ مساحة.';
 function saveProjects(){
-  try{ localStorage.setItem('pt_projects_v2', JSON.stringify(PROJECTS)); }
-  catch(e){ console.error('save projects failed', e); alert('تعذّر حفظ البيانات محلياً. تأكد أن المتصفح يسمح بالتخزين المحلي.'); }
+  if(!DATA_LOADED) return false;
+  try{ localStorage.setItem('pt_projects_v2', JSON.stringify(PROJECTS)); return true; }
+  catch(e){ console.error('save projects failed', e); alert(STORAGE_FULL_MSG); return false; }
 }
 function saveReports(){
-  try{ localStorage.setItem('pt_reports_v2', JSON.stringify(REPORTS)); }
-  catch(e){ console.error('save reports failed', e); }
+  if(!DATA_LOADED) return false;
+  try{ localStorage.setItem('pt_reports_v2', JSON.stringify(REPORTS)); return true; }
+  catch(e){ console.error('save reports failed', e); alert(STORAGE_FULL_MSG); return false; }
 }
 function saveExtras(){
-  try{ localStorage.setItem('pt_extras_v1', JSON.stringify(EXTRAS)); }
-  catch(e){ console.error('save extras failed', e); }
+  if(!DATA_LOADED) return false;
+  try{ localStorage.setItem('pt_extras_v1', JSON.stringify(EXTRAS)); return true; }
+  catch(e){ console.error('save extras failed', e); alert(STORAGE_FULL_MSG); return false; }
 }
 
 /* ================= HELPERS ================= */
-function todayISO(){ return new Date().toISOString().slice(0,10); }
+/* التاريخ المحلي (مو UTC): قبل كان بعد منتصف الليل وحتى ٤ الفجر (توقيت +4) يطلع تاريخ أمس */
+function localISO(d){
+  d = d || new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function todayISO(){ return localISO(); }
 function fmtDateAr(iso){
   if(!iso) return '—';
   const d = new Date(iso+'T00:00:00');
@@ -759,7 +808,7 @@ document.getElementById('applyImportBtn').addEventListener('click', ()=>{
     REPORTS.push({id:'r_'+Date.now().toString(36),createdAt:todayISO(),from:fromISO,to:toISO,snapshotHTML:finalHTML,source:'import'});
     saveReports();
     document.getElementById('rFrom').value=fromISO; document.getElementById('rTo').value=toISO;
-    document.getElementById('reportPreviewWrap').innerHTML=`<div class="report-toolbar"><button class="btn primary" id="saveReportBtn">💾 حفظ التعديلات</button><button class="btn" id="printReportBtn">🖨 طباعة</button></div><div class="rp-preview-box">${renderReportHTML(fromISO,toISO,groups,todayISO(),EXTRAS,{editable:true})}</div>`;
+    showReportPreview(fromISO,toISO,groups);
   }
   document.getElementById('importPanel').classList.remove('show');
   document.getElementById('importText').value = '';
@@ -802,8 +851,8 @@ document.getElementById('addExtraBtn').addEventListener('click', ()=>{
 function setDefaultReportRange(){
   const to = new Date();
   const from = new Date(); from.setDate(from.getDate()-6);
-  document.getElementById('rFrom').value = from.toISOString().slice(0,10);
-  document.getElementById('rTo').value = to.toISOString().slice(0,10);
+  document.getElementById('rFrom').value = localISO(from);
+  document.getElementById('rTo').value = localISO(to);
 }
 
 function buildReportData(fromISO, toISO, onlyUpdated){
@@ -888,11 +937,12 @@ function renderReportHTML(fromISO, toISO, groups, generatedAtISO, extras, opts){
   return `
     <div class="rp-page">
       <div class="rp-header">
-        <div>
-          <h1>التقرير الأسبوعي لحالة المشاريع</h1>
-          <div class="range">الفترة: من ${fmtDateAr(fromISO)} إلى ${fmtDateAr(toISO)}</div>
+        ${REPORT_ORN_SVG}
+        <h1>التقرير الأسبوعي لحالة المشاريع</h1>
+        <div class="rp-meta">
+          <span class="rp-chip"><b>الفترة</b>من ${fmtDateAr(fromISO)} إلى ${fmtDateAr(toISO)}</span>
+          <span class="rp-chip"><b>تاريخ الإصدار</b>${fmtDateAr(generatedAtISO)}</span>
         </div>
-        <div class="issued">تاريخ الإصدار: ${fmtDateAr(generatedAtISO)}</div>
       </div>
       ${body}
       ${extrasHTML}
@@ -978,6 +1028,15 @@ function toggleEditProj(projId, btnEl){
   }
 }
 
+function showReportPreview(fromISO, toISO, groups){
+  const html = renderReportHTML(fromISO, toISO, groups, todayISO(), EXTRAS, {editable:true});
+  document.getElementById('reportPreviewWrap').innerHTML = `
+    <div class="report-toolbar">
+      <button class="btn primary" id="saveReportBtn">💾 حفظ التعديلات</button>
+      <button class="btn" id="printReportBtn">🖨 طباعة</button>
+    </div>
+    <div class="rp-preview-box">${html}</div>`;
+}
 function renderPreview(){
   const from = document.getElementById('rFrom').value;
   const to = document.getElementById('rTo').value;
@@ -985,13 +1044,7 @@ function renderPreview(){
   const onlyUpdated = document.getElementById('rOnlyUpdated').checked;
   const groups = buildReportData(from, to, onlyUpdated);
   currentReportModel = { fromISO: from, toISO: to, groups };
-  const html = renderReportHTML(from, to, groups, todayISO(), EXTRAS, {editable:true});
-  document.getElementById('reportPreviewWrap').innerHTML = `
-    <div class="report-toolbar">
-      <button class="btn primary" id="saveReportBtn">💾 حفظ التعديلات</button>
-      <button class="btn" id="printReportBtn">🖨 طباعة</button>
-    </div>
-    <div class="rp-preview-box">${html}</div>`;
+  showReportPreview(from, to, groups);
 }
 function buildBlankReportData(){
   const groups = {};
@@ -1012,24 +1065,71 @@ document.getElementById('newReportBtn').addEventListener('click', ()=>{
   if(!confirm('سيتم فتح تقرير جديد فارغ لكل المشاريع (بأسمائها فقط، بدون أي ملاحظات سابقة). عند الحفظ، سيتم استبدال أي ملاحظات كانت موجودة ضمن هذه الفترة بما تكتبه أنت الآن. متابعة؟')) return;
   const groups = buildBlankReportData();
   currentReportModel = { fromISO: from, toISO: to, groups };
-  const html = renderReportHTML(from, to, groups, todayISO(), EXTRAS, {editable:true});
-  document.getElementById('reportPreviewWrap').innerHTML = `
-    <div class="report-toolbar">
-      <button class="btn primary" id="saveReportBtn">💾 حفظ التعديلات</button>
-      <button class="btn" id="printReportBtn">🖨 طباعة</button>
-    </div>
-    <div class="rp-preview-box">${html}</div>`;
+  showReportPreview(from, to, groups);
 });
 document.getElementById('previewBtn').addEventListener('click', renderPreview);
 
-function commitAndLog(shouldPrint){
+/* ---------- نافذة تحديد تاريخ التقرير ---------- */
+let pendingPrint = false;
+function updateReportDateSummary(){
+  const f=document.getElementById('rdFrom').value, t=document.getElementById('rdTo').value, i=document.getElementById('rdIssue').value;
+  document.getElementById('rdSummary').innerHTML =
+    `الفترة: من <b>${esc(fmtDateAr(f))}</b> إلى <b>${esc(fmtDateAr(t))}</b><br>تاريخ الإصدار: <b>${esc(fmtDateAr(i))}</b>`;
+  const warn=document.getElementById('rdWarn');
+  const changed = currentReportModel && (f!==currentReportModel.fromISO || t!==currentReportModel.toISO);
+  warn.style.display = changed ? 'block' : 'none';
+  warn.textContent = changed ? 'ملاحظة: غيّرت الفترة عن اللي كانت معروضة، فالنقاط الحالية بتنسجّل بالسجل تحت تاريخ «إلى» الجديد.' : '';
+}
+function openReportDateDialog(shouldPrint){
   if(!currentReportModel){ renderPreview(); if(!currentReportModel) return; }
-  const {fromISO, toISO, groups} = currentReportModel;
+  pendingPrint = !!shouldPrint;
+  document.getElementById('rdFrom').value = currentReportModel.fromISO;
+  document.getElementById('rdTo').value = currentReportModel.toISO;
+  document.getElementById('rdIssue').value = todayISO();
+  document.getElementById('rdError').textContent = '';
+  document.getElementById('rdTitle').textContent = shouldPrint ? 'تاريخ التقرير قبل الطباعة' : 'تاريخ التقرير قبل الحفظ';
+  document.getElementById('reportDateConfirm').textContent = shouldPrint ? '🖨 متابعة للطباعة' : '💾 حفظ';
+  updateReportDateSummary();
+  document.getElementById('reportDateOverlay').classList.add('show');
+  setTimeout(()=>document.getElementById('rdFrom').focus(), 30);
+}
+function closeReportDateDialog(){ document.getElementById('reportDateOverlay').classList.remove('show'); }
+function confirmReportDateDialog(){
+  const from=document.getElementById('rdFrom').value, to=document.getElementById('rdTo').value, issue=document.getElementById('rdIssue').value;
+  const err=document.getElementById('rdError');
+  if(!from || !to || !issue){ err.textContent='عبّي التواريخ الثلاثة (من، إلى، الإصدار).'; return; }
+  if(from > to){ err.textContent='تاريخ «من» لازم يكون قبل تاريخ «إلى» أو مثله.'; return; }
+  closeReportDateDialog();
+  commitAndLog(pendingPrint, {from, to, issue});
+}
+['rdFrom','rdTo','rdIssue'].forEach(id=>document.getElementById(id).addEventListener('input', updateReportDateSummary));
+document.getElementById('reportDateConfirm').addEventListener('click', confirmReportDateDialog);
+document.getElementById('rdCancel').addEventListener('click', closeReportDateDialog);
+document.getElementById('rdClose').addEventListener('click', closeReportDateDialog);
+document.getElementById('reportDateOverlay').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); confirmReportDateDialog(); }
+  else if(e.key==='Escape'){ closeReportDateDialog(); }
+});
+
+function fillPrintArea(html){
+  const sp = '<tr><td><div class="pa-sp"></div></td></tr>';
+  document.getElementById('printArea').innerHTML =
+    '<table class="pa-table"><thead>'+sp+'</thead><tbody><tr><td class="pa-body">'+html+'</td></tr></tbody><tfoot>'+sp+'</tfoot></table>';
+}
+
+function commitAndLog(shouldPrint, dates){
+  if(!currentReportModel){ renderPreview(); if(!currentReportModel) return; }
+  const origFrom = currentReportModel.fromISO, origTo = currentReportModel.toISO;
+  const fromISO = (dates && dates.from) || origFrom;
+  const toISO = (dates && dates.to) || origTo;
+  const genDate = (dates && dates.issue) || todayISO();
+  const groups = currentReportModel.groups;
   Object.keys(groups).forEach(k=>{
     groups[k].forEach(item=>{
       const p = getProject(item.id);
       if(!p) return;
-      p.entries = p.entries.filter(e=> !(e.date>=fromISO && e.date<=toISO));
+      // نستبدل السجلات ضمن الفترة اللي كانت معروضة فعلاً، ونسجّل النقاط تحت تاريخ «إلى» المختار
+      p.entries = p.entries.filter(e=> !(e.date>=origFrom && e.date<=origTo));
       const cleanPoints = item.points.filter(pt=>pt.text && pt.text.trim())
         .map(pt=>({text:pt.text.trim(), color:pt.color||'default'}));
       if(cleanPoints.length>0){
@@ -1038,18 +1138,23 @@ function commitAndLog(shouldPrint){
       item.points = cleanPoints;
     });
   });
+  currentReportModel.fromISO = fromISO;
+  currentReportModel.toISO = toISO;
+  document.getElementById('rFrom').value = fromISO;
+  document.getElementById('rTo').value = toISO;
   saveProjects();
   renderDashboard(); renderSidebarFilters();
 
-  const genDate = todayISO();
   const finalHTML = renderReportHTML(fromISO, toISO, groups, genDate, EXTRAS, {editable:false});
-  REPORTS.push({ id:'r_'+Date.now().toString(36), createdAt: genDate, from:fromISO, to:toISO, snapshotHTML: finalHTML });
-  saveReports();
+  const rec = { id:'r_'+Date.now().toString(36), createdAt: genDate, from:fromISO, to:toISO, snapshotHTML: finalHTML };
+  REPORTS.push(rec);
+  const saved = saveReports();
+  if(!saved){ REPORTS = REPORTS.filter(r=>r!==rec); }
 
   if(shouldPrint){
-    document.getElementById('printArea').innerHTML = finalHTML;
+    fillPrintArea(finalHTML);
     setTimeout(()=>window.print(), 150);
-  }else{
+  }else if(saved){
     alert('تم حفظ التعديلات وتسجيل نسخة في السجل.');
   }
 }
@@ -1065,8 +1170,8 @@ document.getElementById('reportPreviewWrap').addEventListener('click', (e)=>{
     if(block) block.remove();
     return;
   }
-  if(e.target.id==='saveReportBtn'){ commitAndLog(false); return; }
-  if(e.target.id==='printReportBtn'){ commitAndLog(true); return; }
+  if(e.target.id==='saveReportBtn'){ openReportDateDialog(false); return; }
+  if(e.target.id==='printReportBtn'){ openReportDateDialog(true); return; }
 });
 
 /* ================= HISTORY PAGE ================= */
@@ -1091,36 +1196,22 @@ function renderHistory(){
     btn.addEventListener('click', (e)=>{
       const id = e.target.closest('.hist-row').dataset.id;
       const r = REPORTS.find(x=>x.id===id);
-      const w = window.open('', '_blank');
-      w.document.write(`<html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير ${r.createdAt}</title>
-        <style>
-          body{font-family:Tahoma,Arial,sans-serif;padding:20px;color:#1c1a17;}
-          .rp-header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px;}
-          .rp-cat-title{font-size:13px;font-weight:700;background:#EFE6D8;padding:5px 10px;margin:14px 0 8px;border-radius:2px;}
-          .rp-proj{display:flex;gap:18px;padding:8px 2px 10px;border-bottom:1px solid #e2ddd2;}
-          .rp-proj-side{flex:0 0 160px;}
-          .rp-proj-name{font-size:13px;font-weight:700;margin-bottom:3px;}
-          .rp-proj-loc{font-size:10px;color:#666;line-height:1.5;}
-          .rp-proj-loc .lic{display:block;}
-          .rp-fab-tag{display:inline-block;margin-top:5px;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:10px;}
-          .rp-fab-tag.none{background:#F5E2DF;color:#A63A31;}
-          .rp-fab-tag.pending{background:#F5EBDA;color:#B4802E;}
-          .rp-fab-tag.submitted{background:#E4EFE8;color:#2E6B4F;}
-          .rp-fab-tag.custom{background:#EFE6D8;color:#5B4530;}
-          .rp-proj-notes{flex:1;min-width:0;}
-          .rp-points{margin:0;padding-inline-start:16px;font-size:13px;line-height:1.65;}
-          .g{color:#2E6B4F;font-weight:700;} .r{color:#A63A31;font-weight:700;}
-          .rp-empty-note{font-size:11px;color:#999;}
-        </style>
-        </head><body>${r.snapshotHTML}</body></html>`);
-      w.document.close();
+      if(!r) return;
+      document.getElementById('vrTitle').textContent = 'تقرير بتاريخ ' + fmtDateAr(r.createdAt);
+      document.getElementById('vrSub').textContent = 'الفترة: ' + fmtDateAr(r.from) + ' → ' + fmtDateAr(r.to);
+      document.getElementById('vrBody').innerHTML = r.snapshotHTML;
+      document.getElementById('vrPrint').onclick = ()=>{
+        fillPrintArea(r.snapshotHTML);
+        setTimeout(()=>window.print(), 100);
+      };
+      document.getElementById('viewReportOverlay').classList.add('show');
     });
   });
   wrap.querySelectorAll('.print-hist').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       const id = e.target.closest('.hist-row').dataset.id;
       const r = REPORTS.find(x=>x.id===id);
-      document.getElementById('printArea').innerHTML = r.snapshotHTML;
+      fillPrintArea(r.snapshotHTML);
       setTimeout(()=>window.print(), 100);
     });
   });
@@ -1185,6 +1276,9 @@ document.getElementById('importBackupFile').addEventListener('change', (e)=>{
   };
   reader.readAsText(file, 'utf-8');
 });
+
+document.getElementById('vrClose').addEventListener('click', ()=>document.getElementById('viewReportOverlay').classList.remove('show'));
+document.getElementById('viewReportOverlay').addEventListener('keydown', e=>{ if(e.key==='Escape') document.getElementById('viewReportOverlay').classList.remove('show'); });
 
 /* ================= INIT ================= */
 function startApp(){

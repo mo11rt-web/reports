@@ -77,7 +77,7 @@
       <div class="page-head">
         <div>
           <h1>التقرير الأسبوعي</h1>
-          <p>حدّد الفترة، عاين التقرير، ثم اطبعه — تُحفظ نسخة في السجل تلقائياً بتاريخ اليوم.</p>
+          <p>حدّد الفترة، عاين التقرير، ثم احفظه أو اطبعه — يطلع لك مربع لتأكيد التاريخ (من/إلى) قبل الحفظ، وتُحفظ نسخة في السجل.</p>
         </div>
         <button class="btn" id="toggleImportBtn">📋 استيراد نقاط من نص</button>
       </div>
@@ -235,7 +235,47 @@
   </div>
 </div>
 
+<!-- نافذة تحديد تاريخ التقرير (تظهر عند الحفظ أو الطباعة) -->
+<div class="overlay" id="reportDateOverlay">
+  <div class="modal rd-modal">
+    <div class="modal-head">
+      <div><h2 id="rdTitle">تاريخ التقرير</h2><div class="sub">حدّد الفترة وتاريخ الإصدار كما تبغاهم يظهروا بالتقرير.</div></div>
+      <button class="modal-close" id="rdClose" title="إغلاق">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field"><label>من تاريخ</label><input type="date" id="rdFrom"></div>
+        <div class="field"><label>إلى تاريخ</label><input type="date" id="rdTo"></div>
+        <div class="field full"><label>تاريخ الإصدار</label><input type="date" id="rdIssue"></div>
+      </div>
+      <div class="rd-summary" id="rdSummary"></div>
+      <div class="rd-warn" id="rdWarn" style="display:none;"></div>
+      <div class="lock-error" id="rdError"></div>
+      <div class="rd-actions">
+        <button class="btn primary" id="reportDateConfirm">متابعة</button>
+        <button class="btn" id="rdCancel">إلغاء</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- عرض تقرير من السجل -->
+<div class="overlay" id="viewReportOverlay">
+  <div class="modal view-modal">
+    <div class="modal-head">
+      <div><h2 id="vrTitle">تقرير</h2><div class="sub" id="vrSub"></div></div>
+      <button class="modal-close" id="vrClose" title="إغلاق">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="view-toolbar"><button class="btn primary" id="vrPrint">🖨 طباعة / PDF</button></div>
+      <div class="rp-preview-box" id="vrBody"></div>
+    </div>
+  </div>
+</div>
+
 <div id="printArea"></div>
+<!-- خلفية زخرفية تظهر بالطباعة فقط (خلف كل صفحة) -->
+<div id="printWm" aria-hidden="true"><div class="wm-pattern"></div><div class="wm-frame"></div></div>
 <datalist id="categoryOptions"></datalist>
 
 <script src="app.js"></script>

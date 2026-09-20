@@ -26,7 +26,7 @@
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 body{
-  font-family:'Segoe UI','Segoe UI Historic',Tahoma,Arial,sans-serif;
+  font-family:Calibri,Carlito,'Segoe UI','Segoe UI Historic',Tahoma,Arial,sans-serif;
   background:var(--paper);
   color:var(--ink);
   min-height:100vh;
@@ -236,49 +236,89 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;}
 .extra-row .extra-title{flex:1;padding:7px 9px;border:1px solid var(--line);border-radius:var(--radius);font-size:13px;font-weight:600;}
 .extra-row .extra-text{width:100%;min-height:60px;padding:8px 9px;border:1px solid var(--line);border-radius:var(--radius);font-size:13px;resize:vertical;}
 
-#printArea{display:none;}
-
 .history-list{display:flex;flex-direction:column;gap:8px;}
 .hist-row{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;}
 .hist-main .d1{font-weight:600;font-size:13.5px;}
 .hist-main .d2{font-size:12px;color:var(--ink-soft);}
 
-/* -------- Print styles (Excel-like grid) -------- */
-@media print{
-  body *{visibility:hidden;}
-  #printArea, #printArea *{visibility:visible;}
-  #printArea{display:block;position:absolute;top:0;right:0;left:0;margin:0;padding:0;}
-  @page{size:A4 portrait;margin:10mm 12mm;}
+/* =========================================================
+   شكل التقرير (المعاينة + الطباعة/PDF) — خط Calibri + زخرفة إسلامية خفيفة
+   ========================================================= */
+#printArea,#printWm{display:none;}
+
+.rp-page{
+  font-family:Calibri,Carlito,'Segoe UI',Tahoma,Arial,sans-serif;
+  color:#26221c;font-size:14px;line-height:1.5;
 }
-.rp-page{font-family:Tahoma,'Segoe UI',Arial,sans-serif;color:#1c1a17;}
-.rp-header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:10px;}
-.rp-header h1{font-size:17px;margin:0 0 3px;}
-.rp-header .range{font-size:12px;color:#333;}
-.rp-header .issued{font-size:10.5px;color:#555;text-align:left;}
-.rp-cat-title{font-size:13.5px;font-weight:700;background:#EFE6D8;padding:6px 10px;margin:16px 0 8px;border-radius:2px;}
-.rp-proj{display:flex;gap:20px;padding:9px 2px 11px;border-bottom:1px solid #e2ddd2;page-break-inside:avoid;}
-.rp-proj-side{flex:0 0 160px;}
-.rp-proj-name{font-size:13.5px;font-weight:700;margin-bottom:4px;}
-.rp-proj-loc{font-size:10.5px;color:#666;line-height:1.55;}
+/* الترويسة */
+.rp-header{text-align:center;padding:0 0 12px;margin:0 0 14px;border-bottom:3px double #7A5C3E;}
+.rp-orn{display:block;margin:0 auto 4px;width:220px;height:20px;}
+.rp-header h1{font-size:24px;font-weight:700;color:#5B4530;margin:2px 0 9px;}
+.rp-meta{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 10px;}
+.rp-chip{border:1px solid rgba(122,92,62,.5);border-radius:999px;padding:3px 15px;font-size:12.5px;color:#4a3b2a;background:rgba(239,230,216,.6);}
+.rp-chip b{color:#7A5C3E;font-weight:700;margin-inline-end:7px;}
+.rp-header .range{font-size:13px;color:#4a3b2a;}
+.rp-header .issued{font-size:11.5px;color:#666;}
+/* عنوان التصنيف */
+.rp-cat-title{
+  display:flex;align-items:center;gap:9px;
+  font-size:15.5px;font-weight:700;color:#fff;background:#7A5C3E;
+  padding:6px 13px;margin:18px 0 6px;border-radius:3px;
+  break-after:avoid;page-break-after:avoid;
+}
+.rp-cat-title::before{
+  content:'';flex:none;width:13px;height:13px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 20 20' fill='none' stroke='white' stroke-width='1.6'%3E%3Crect x='-6' y='-6' width='12' height='12'/%3E%3Crect x='-6' y='-6' width='12' height='12' transform='rotate(45)'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+/* صف المشروع */
+.rp-proj{display:flex;gap:18px;padding:9px 4px 10px;border-bottom:1px dotted rgba(122,92,62,.45);break-inside:avoid;page-break-inside:avoid;}
+.rp-proj-side{flex:0 0 165px;}
+.rp-proj-name{font-size:15px;font-weight:700;color:#3a2f22;margin-bottom:3px;}
+.rp-proj-loc{font-size:11.5px;color:#6b6155;line-height:1.55;}
 .rp-proj-loc .lic{display:block;}
-.rp-fab-tag{display:inline-block;margin-top:6px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;}
+.rp-fab-tag{display:inline-block;margin-top:6px;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:10px;}
 .rp-fab-tag.none{background:#F5E2DF;color:#A63A31;}
 .rp-fab-tag.pending{background:#F5EBDA;color:#B4802E;}
 .rp-fab-tag.submitted{background:#E4EFE8;color:#2E6B4F;}
 .rp-fab-tag.custom{background:#EFE6D8;color:#5B4530;}
 .rp-proj-notes{flex:1;min-width:0;}
-.rp-points{margin:0;padding-inline-start:16px;font-size:13.5px;line-height:1.7;}
-.rp-points li{margin-bottom:3px;}
+.rp-points{list-style:none;margin:0;padding:0;font-size:14px;line-height:1.65;}
+.rp-points li{position:relative;padding-inline-start:15px;margin-bottom:3px;}
+.rp-points li::before{content:'';position:absolute;inset-inline-start:2px;top:.66em;width:5px;height:5px;background:#7A5C3E;transform:rotate(45deg);}
 .rp-points li.g{color:#2E6B4F;font-weight:600;}
+.rp-points li.g::before{background:#2E6B4F;}
 .rp-points li.r{color:#A63A31;font-weight:600;}
-.rp-empty-note{font-size:11.5px;color:#999;}
-.rp-extra{padding:8px 4px 10px;border-bottom:1px solid #e2ddd2;}
-.rp-extra-title{font-weight:700;font-size:13.5px;margin-bottom:4px;}
-.rp-extra-text{font-size:13.5px;line-height:1.7;white-space:pre-wrap;}
+.rp-points li.r::before{background:#A63A31;}
+.rp-empty-note{font-size:12px;color:#9a9388;}
+.rp-extra{padding:8px 4px 10px;border-bottom:1px dotted rgba(122,92,62,.45);break-inside:avoid;page-break-inside:avoid;}
+.rp-extra-title{font-weight:700;font-size:14.5px;color:#3a2f22;margin-bottom:4px;}
+.rp-extra-text{font-size:14px;line-height:1.7;white-space:pre-wrap;}
+
+/* -------- الطباعة / PDF -------- */
+@media print{
+  @page{size:A4 portrait;margin:0;}
+  /* إخفاء التطبيق بالكامل من التخطيط (مو بس بصرياً) — هذا اللي كان يسبّب الصفحات الفاضية */
+  body>*:not(#printArea):not(#printWm){display:none !important;}
+  html,body{background:#fff !important;height:auto !important;min-height:0 !important;margin:0 !important;padding:0 !important;overflow:visible !important;}
+  #printArea{display:block !important;position:relative;z-index:1;margin:0;padding:0;}
+  #printArea,#printArea *,#printWm,#printWm *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .rp-page{min-height:0 !important;}
+  /* هوامش الصفحة تتكرر بكل صفحة عبر thead/tfoot (لأن الهامش الحقيقي صفر حتى تغطي الزخرفة كامل الورقة) */
+  .pa-table{width:100%;border-collapse:collapse;border:0;}
+  .pa-table td{padding:0;border:0;}
+  .pa-sp{height:14mm;}
+  .pa-body{padding:0 15mm !important;}
+  /* الخلفية الزخرفية: عنصر ثابت يتكرر خلف كل صفحة ويغطي كامل الورقة */
+  #printWm{display:block;position:fixed;top:0;bottom:0;left:0;right:0;z-index:0;pointer-events:none;}
+  #printWm .wm-pattern,#printWm .wm-frame{position:absolute;inset:0;}
+  #printWm .wm-pattern{background-image:var(--wm-pattern);background-size:26mm 26mm;background-position:center top;}
+  #printWm .wm-frame{background-image:var(--wm-frame);background-size:100% 100%;background-repeat:no-repeat;}
+}
 
 /* report edit toolbar + inline editing */
 .report-toolbar{display:flex;gap:10px;margin-bottom:12px;}
-.rp-preview-box{background:#fff;border:1px solid var(--line);border-radius:4px;padding:20px 24px;overflow-x:auto;}
+/* معاينة التقرير داخل التطبيق: نفس الزخرفة الخفيفة */
+.rp-preview-box{background:#fff;background-image:var(--wm-pattern);background-size:26mm 26mm;border:1px solid var(--line);border-radius:4px;padding:22px 28px;overflow-x:auto;}
 .rp-proj-edit{flex:0 0 auto;display:flex;align-items:flex-start;padding-top:2px;gap:6px;}
 .rp-edit-btn{background:none;border:1px solid var(--line);border-radius:4px;width:27px;height:27px;font-size:13px;cursor:pointer;color:var(--ink-soft);}
 .rp-edit-btn:hover{border-color:var(--brand);color:var(--brand-dark);}
@@ -297,3 +337,11 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;}
   #main{padding:18px;max-width:100%;}
   .field-grid{grid-template-columns:1fr;}
 }
+
+/* ---------- نافذة تحديد تاريخ التقرير ---------- */
+.rd-modal{max-width:460px;}
+.rd-summary{margin:14px 0 0;padding:9px 12px;background:var(--brand-tint);border:1px solid var(--line);border-radius:var(--radius);font-size:13px;color:var(--brand-dark);line-height:1.6;}
+.rd-warn{margin-top:8px;font-size:12px;color:var(--warn);line-height:1.6;}
+.rd-actions{display:flex;justify-content:flex-start;gap:8px;margin-top:20px;}
+.view-modal{max-width:920px;}
+.view-toolbar{display:flex;gap:10px;margin-bottom:12px;}
