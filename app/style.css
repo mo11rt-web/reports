@@ -310,6 +310,18 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;}
 .edit-points-wrap{display:flex;flex-direction:column;gap:6px;}
 .edit-point-row{display:flex;gap:6px;align-items:center;}
 .edit-point-row .ep-text{flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px;}
+.edit-point-row .ep-text.rte{min-height:20px;background:#fff;outline:none;line-height:1.6;}
+.edit-point-row .ep-text.rte:focus{border-color:#7A5C3E;box-shadow:0 0 0 2px rgba(122,92,62,.15);}
+.edit-point-row .ep-text.rte:empty::before{content:'اكتب نقطة...';color:#a89e8d;}
+/* ---------- شريط أدوات تنسيق النص (شبيه بالوورد) ---------- */
+.rte-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:4px;background:#F7F1E8;border:1px solid #E7DBC8;border-radius:8px;padding:6px 8px;margin:0 0 14px;}
+.rte-btn{min-width:28px;height:27px;padding:0 7px;border:1px solid transparent;background:transparent;border-radius:5px;cursor:pointer;font-size:13px;color:#4a3b2a;}
+.rte-btn:hover{background:#EFE6D8;border-color:#DDCBA9;}
+.rte-select{height:27px;border:1px solid #E0D4BE;border-radius:5px;background:#fff;font-size:12px;padding:0 4px;color:#4a3b2a;}
+.rte-color-lbl{display:inline-flex;align-items:center;gap:3px;font-size:13px;color:#4a3b2a;cursor:pointer;padding:0 3px;}
+.rte-color-lbl input[type=color]{width:22px;height:22px;border:none;padding:0;background:none;cursor:pointer;vertical-align:middle;}
+.rte-sep{width:1px;height:20px;background:#DDCBA9;margin:0 4px;}
+
 .color-select.mini{display:flex;gap:3px;flex:none;}
 .color-select.mini .color-opt{width:24px;height:24px;}
 

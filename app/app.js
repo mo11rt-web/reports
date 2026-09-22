@@ -853,7 +853,7 @@ function buildReportData(fromISO, toISO, onlyUpdated){
 
 function renderPointsHTML(points){
   return points.length
-    ? `<ul class="rp-points">${points.map(pt=>`<li class="${pt.color==='green'?'g':pt.color==='red'?'r':''}">${esc(pt.text)}</li>`).join('')}</ul>`
+    ? `<ul class="rp-points">${points.map(pt=>`<li class="${pt.color==='green'?'g':pt.color==='red'?'r':''}">${pt.html ? pt.html : esc(pt.text)}</li>`).join('')}</ul>`
     : `<div class="rp-empty-note">لا يوجد تحديث ضمن الفترة المحددة.</div>`;
 }
 
@@ -944,7 +944,7 @@ function removeProjFromReportModel(projId){
 function renderPointsEditHTML(points){
   const rows = points.map((pt,idx)=>`
     <div class="edit-point-row" data-idx="${idx}">
-      <input class="ep-text" value="${esc(pt.text)}">
+      <div class="ep-text rte" contenteditable="true" dir="auto">${pt.html ? pt.html : esc(pt.text)}</div>
       <div class="color-select mini">
         <button type="button" class="color-opt ${pt.color==='default'?'sel':''}" data-c="default" title="عادي"><span></span></button>
         <button type="button" class="color-opt ${pt.color==='green'?'sel':''}" data-c="green" title="مهم - أخضر"><span></span></button>
@@ -958,7 +958,8 @@ function renderPointsEditHTML(points){
 function attachPointsEditHandlers(notesDiv, item){
   notesDiv.querySelectorAll('.edit-point-row').forEach(row=>{
     const idx = parseInt(row.dataset.idx);
-    row.querySelector('.ep-text').addEventListener('input', e=>{ item.points[idx].text = e.target.value; });
+    const rteEl = row.querySelector('.ep-text');
+    rteEl.addEventListener('input', ()=>{ item.points[idx].html = rteEl.innerHTML; item.points[idx].text = rteEl.textContent; });
     row.querySelectorAll('.color-opt').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         item.points[idx].color = btn.dataset.c;
@@ -1010,7 +1011,81 @@ function showReportPreview(fromISO, toISO, groups){
       <button class="btn primary" id="saveReportBtn">💾 حفظ التعديلات</button>
       <button class="btn" id="printReportBtn">🖨 طباعة</button>
     </div>
+    ${RTE_TOOLBAR_HTML}
     <div class="rp-preview-box">${html}</div>`;
+  attachRteToolbar();
+}
+
+/* ---------- تنسيق نص نقاط التقرير (شريط أدوات شبيه بالوورد) ---------- */
+const RTE_TOOLBAR_HTML = `<div class="rte-toolbar" id="rteToolbar" title="حدد نقطة للتحرير ثم استخدم الأدوات هنا">
+      <button type="button" class="rte-btn" data-cmd="bold" title="غامق"><b>B</b></button>
+      <button type="button" class="rte-btn" data-cmd="italic" title="مائل"><i>I</i></button>
+      <button type="button" class="rte-btn" data-cmd="underline" title="تحته خط"><u>U</u></button>
+      <span class="rte-sep"></span>
+      <select class="rte-select" id="rteFont" title="نوع الخط">
+        <option value="">الخط</option>
+        <option value="Calibri">Calibri</option>
+        <option value="Arial">Arial</option>
+        <option value="Tahoma">Tahoma</option>
+        <option value="Segoe UI">Segoe UI</option>
+        <option value="Times New Roman">Times New Roman</option>
+        <option value="Georgia">Georgia</option>
+        <option value="Courier New">Courier New</option>
+      </select>
+      <select class="rte-select" id="rteSize" title="حجم الخط">
+        <option value="">الحجم</option>
+        <option value="1">صغير جداً</option>
+        <option value="2">صغير</option>
+        <option value="3" selected>عادي</option>
+        <option value="4">متوسط</option>
+        <option value="5">كبير</option>
+        <option value="6">أكبر</option>
+        <option value="7">ضخم</option>
+      </select>
+      <span class="rte-sep"></span>
+      <label class="rte-color-lbl" title="لون النص">A<input type="color" id="rteColor" value="#2b2620"></label>
+      <label class="rte-color-lbl" title="لون التظليل">🖊<input type="color" id="rteHilite" value="#fff59d"></label>
+      <button type="button" class="rte-btn" data-cmd="removeFormat" title="إزالة كل التنسيق">✕</button>
+      <span class="rte-sep"></span>
+      <button type="button" class="rte-btn" data-cmd="justifyRight" title="محاذاة يمين">⇥≡</button>
+      <button type="button" class="rte-btn" data-cmd="justifyCenter" title="توسيط">≡</button>
+      <button type="button" class="rte-btn" data-cmd="justifyLeft" title="محاذاة يسار">≡⇤</button>
+      <span class="rte-sep"></span>
+      <button type="button" class="rte-btn" data-cmd="insertUnorderedList" title="قائمة نقطية">•≡</button>
+      <button type="button" class="rte-btn" data-cmd="insertOrderedList" title="قائمة مرقمة">1≡</button>
+    </div>`;
+let activeRTE = null;
+document.addEventListener('focusin', (e)=>{ if(e.target.classList && e.target.classList.contains('rte')) activeRTE = e.target; });
+function rteSyncModel(el){
+  const row = el.closest('.edit-point-row');
+  const projBlock = el.closest('.rp-proj');
+  if(!row || !projBlock) return;
+  const item = findItemInModel(projBlock.dataset.projId);
+  if(!item) return;
+  const idx = parseInt(row.dataset.idx);
+  if(item.points[idx]){ item.points[idx].html = el.innerHTML; item.points[idx].text = el.textContent; }
+}
+function rteExec(cmd, value){
+  if(!activeRTE) return;
+  activeRTE.focus();
+  document.execCommand(cmd, false, value || null);
+  rteSyncModel(activeRTE);
+}
+function attachRteToolbar(){
+  const bar = document.getElementById('rteToolbar');
+  if(!bar) return;
+  bar.querySelectorAll('.rte-btn').forEach(b=>{
+    b.addEventListener('mousedown', e=>e.preventDefault());
+    b.addEventListener('click', ()=> rteExec(b.dataset.cmd));
+  });
+  const fontSel = document.getElementById('rteFont');
+  fontSel.addEventListener('mousedown', e=>e.stopPropagation());
+  fontSel.addEventListener('change', e=>{ rteExec('fontName', e.target.value); e.target.value=''; });
+  const sizeSel = document.getElementById('rteSize');
+  sizeSel.addEventListener('mousedown', e=>e.stopPropagation());
+  sizeSel.addEventListener('change', e=>{ rteExec('fontSize', e.target.value); });
+  document.getElementById('rteColor').addEventListener('input', e=> rteExec('foreColor', e.target.value));
+  document.getElementById('rteHilite').addEventListener('input', e=> rteExec('hiliteColor', e.target.value));
 }
 function renderPreview(){
   const from = document.getElementById('rFrom').value;
@@ -1104,7 +1179,7 @@ function commitAndLog(shouldPrint, dates){
       // نستبدل السجلات ضمن الفترة اللي كانت معروضة فعلاً، ونسجّل النقاط تحت تاريخ «إلى» المختار
       p.entries = p.entries.filter(e=> !(e.date>=origFrom && e.date<=origTo));
       const cleanPoints = item.points.filter(pt=>pt.text && pt.text.trim())
-        .map(pt=>({text:pt.text.trim(), color:pt.color||'default'}));
+        .map(pt=>({text:pt.text.trim(), color:pt.color||'default', ...(pt.html?{html:pt.html}:{})}));
       if(cleanPoints.length>0){
         p.entries.push({date: toISO, points: cleanPoints});
       }
