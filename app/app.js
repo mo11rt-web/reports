@@ -839,7 +839,8 @@ function buildReportData(fromISO, toISO, onlyUpdated){
     const pointsInRange = [];
     p.entries.forEach(entry=>{
       if(entry.date>=fromISO && entry.date<=toISO){
-        entry.points.forEach(pt=>pointsInRange.push(pt));
+        // النقاط اللي سبق واتحفظت بتقرير سابق ما ترجع تطلع بتقرير جديد حتى لو تداخلت الفترات
+        entry.points.forEach(pt=>{ if(!pt.reported) pointsInRange.push(pt); });
       }
     });
     if(onlyUpdated && pointsInRange.length===0) return;
@@ -854,7 +855,7 @@ function buildReportData(fromISO, toISO, onlyUpdated){
 function renderPointsHTML(points){
   return points.length
     ? `<ul class="rp-points">${points.map(pt=>`<li class="${pt.color==='green'?'g':pt.color==='red'?'r':''}">${pt.html ? pt.html : esc(pt.text)}</li>`).join('')}</ul>`
-    : `<div class="rp-empty-note">لا يوجد تحديث ضمن الفترة المحددة.</div>`;
+    : `<div class="rp-empty-note">لم يتم ذكر أي نقاط لهذا المشروع ضمن هذه الفترة.</div>`;
 }
 
 function renderReportHTML(fromISO, toISO, groups, generatedAtISO, extras, opts){
@@ -941,6 +942,48 @@ function removeProjFromReportModel(projId){
   });
 }
 
+/* ---------- إضافة مشروع كان محذوف من التقرير الحالي فقط (بدون ما نفقد التعديلات على البقية) ---------- */
+function getMissingProjectsFromModel(){
+  if(!currentReportModel) return [];
+  const presentIds = new Set();
+  Object.values(currentReportModel.groups).forEach(arr=>arr.forEach(it=>presentIds.add(it.id)));
+  return PROJECTS.filter(p=>!presentIds.has(p.id));
+}
+function addProjectToReport(projId){
+  if(!currentReportModel) return;
+  const p = getProject(projId);
+  if(!p) return;
+  const cat = catOf(p);
+  if(!currentReportModel.groups[cat]) currentReportModel.groups[cat] = [];
+  const pointsInRange = [];
+  p.entries.forEach(entry=>{
+    if(entry.date>=currentReportModel.fromISO && entry.date<=currentReportModel.toISO){
+      entry.points.forEach(pt=>{ if(!pt.reported) pointsInRange.push(pt); });
+    }
+  });
+  currentReportModel.groups[cat].push({
+    id:p.id, owner:p.owner, location:p.location, projId:p.projId, contractor:p.contractor,
+    fab: p.fab.status, fabCustomText: p.fab.customText||'', fabApplicable: isFabApplicable(p), points: pointsInRange
+  });
+  showReportPreview(currentReportModel.fromISO, currentReportModel.toISO, currentReportModel.groups);
+}
+function attachAddToReportUI(){
+  const btn = document.getElementById('addProjToReportBtn');
+  if(!btn) return;
+  const wrap = document.getElementById('addToReportWrap');
+  const sel = document.getElementById('addToReportSelect');
+  btn.addEventListener('click', ()=>{
+    const missing = getMissingProjectsFromModel();
+    if(missing.length===0){ alert('كل المشاريع موجودة أصلاً بهذا التقرير.'); return; }
+    sel.innerHTML = missing.map(p=>`<option value="${p.id}">${esc(p.owner)}</option>`).join('');
+    wrap.style.display = (wrap.style.display==='none' || !wrap.style.display) ? 'flex' : 'none';
+  });
+  document.getElementById('addToReportConfirm').addEventListener('click', ()=>{
+    const id = sel.value;
+    if(id) addProjectToReport(id);
+  });
+}
+
 function renderPointsEditHTML(points){
   const rows = points.map((pt,idx)=>`
     <div class="edit-point-row" data-idx="${idx}">
@@ -986,21 +1029,27 @@ function toggleEditProj(projId, btnEl){
   const item = findItemInModel(projId);
   if(!item) return;
   const editing = block.dataset.editing === '1';
-  if(editing){
-    // حفظ التغييرات مؤقتاً بالذاكرة وإرجاع العرض الطبيعي
-    item.points = item.points.filter(pt=>pt.text && pt.text.trim());
-    notesDiv.innerHTML = renderPointsHTML(item.points);
+  // حماية: أي خطأ غير متوقع هنا ما يخلي زر التحرير عالق بحالة نصف-مفتوحة —
+  // نرجّع العرض الطبيعي دائماً حتى لو صار خطأ.
+  try{
+    if(editing){
+      item.points = item.points.filter(pt=>(pt.html ? pt.html.replace(/<[^>]*>/g,'').trim() : (pt.text||'').trim()));
+      notesDiv.innerHTML = renderPointsHTML(item.points);
+    } else {
+      notesDiv.innerHTML = renderPointsEditHTML(item.points);
+      attachPointsEditHandlers(notesDiv, item);
+    }
+    block.dataset.editing = editing ? '0' : '1';
+    btnEl.textContent = editing ? '✏️' : '✓';
+    btnEl.classList.toggle('editing', !editing);
+    btnEl.title = editing ? 'تحرير' : 'إنهاء التحرير';
+  }catch(err){
+    console.error('toggleEditProj failed, resetting view', err);
+    try{ notesDiv.innerHTML = renderPointsHTML(item.points); }catch(_){}
     block.dataset.editing = '0';
     btnEl.textContent = '✏️';
     btnEl.classList.remove('editing');
     btnEl.title = 'تحرير';
-  } else {
-    notesDiv.innerHTML = renderPointsEditHTML(item.points);
-    attachPointsEditHandlers(notesDiv, item);
-    block.dataset.editing = '1';
-    btnEl.textContent = '✓';
-    btnEl.classList.add('editing');
-    btnEl.title = 'إنهاء التحرير';
   }
 }
 
@@ -1010,10 +1059,16 @@ function showReportPreview(fromISO, toISO, groups){
     <div class="report-toolbar">
       <button class="btn primary" id="saveReportBtn">💾 حفظ التعديلات</button>
       <button class="btn" id="printReportBtn">🖨 طباعة</button>
+      <button class="btn" id="addProjToReportBtn">+ إضافة مشروع للتقرير</button>
+    </div>
+    <div class="add-to-report-wrap" id="addToReportWrap" style="display:none;">
+      <select id="addToReportSelect"></select>
+      <button class="btn small primary" id="addToReportConfirm">إضافة</button>
     </div>
     ${RTE_TOOLBAR_HTML}
     <div class="rp-preview-box">${html}</div>`;
   attachRteToolbar();
+  attachAddToReportUI();
 }
 
 /* ---------- تنسيق نص نقاط التقرير (شريط أدوات شبيه بالوورد) ---------- */
@@ -1176,14 +1231,30 @@ function commitAndLog(shouldPrint, dates){
     groups[k].forEach(item=>{
       const p = getProject(item.id);
       if(!p) return;
-      // نستبدل السجلات ضمن الفترة اللي كانت معروضة فعلاً، ونسجّل النقاط تحت تاريخ «إلى» المختار
-      p.entries = p.entries.filter(e=> !(e.date>=origFrom && e.date<=origTo));
-      const cleanPoints = item.points.filter(pt=>pt.text && pt.text.trim())
-        .map(pt=>({text:pt.text.trim(), color:pt.color||'default', ...(pt.html?{html:pt.html}:{})}));
-      if(cleanPoints.length>0){
-        p.entries.push({date: toISO, points: cleanPoints});
-      }
-      item.points = cleanPoints;
+      // النقاط الموجودة أصلاً (نفس المرجع) نعدّلها بمكانها بدون ما نغيّر تاريخها الأصلي.
+      // النقاط الجديدة (متضافة بشاشة المعاينة ولسا مو موجودة بأي سجل) نضيفها تحت تاريخ «إلى» المختار.
+      // وبعدين نعلّم كل نقطة ضمن هذا التقرير كـ "تم التقرير عنها" حتى ما ترجع تطلع بتقرير ثاني ولو تداخلت التواريخ.
+      const existingRefs = new Set();
+      p.entries.forEach(entry=> entry.points.forEach(pt=> existingRefs.add(pt)));
+      const finalPoints = item.points
+        .filter(pt=>(pt.html ? pt.html.replace(/<[^>]*>/g,'').trim() : (pt.text||'').trim()))
+        .map(pt=>{ pt.text = (pt.text||'').trim(); pt.color = pt.color||'default'; return pt; });
+      const finalSet = new Set(finalPoints);
+      finalPoints.forEach(pt=>{
+        if(!existingRefs.has(pt)){
+          let entry = p.entries.find(e=>e.date===toISO);
+          if(!entry){ entry = {date:toISO, points:[]}; p.entries.push(entry); }
+          entry.points.push(pt);
+        }
+        pt.reported = true;
+      });
+      // نحذف من السجلات الأصلية أي نقطة كانت ضمن هذا التقرير وحذفها المستخدم أثناء التحرير
+      p.entries.forEach(entry=>{
+        if(entry.date>=origFrom && entry.date<=origTo){
+          entry.points = entry.points.filter(pt=> pt.reported || finalSet.has(pt));
+        }
+      });
+      item.points = finalPoints;
     });
   });
   currentReportModel.fromISO = fromISO;
