@@ -1,6 +1,6 @@
 # متابعة المشاريع
 
-## بناء مثبت Windows من GitHub
+## بناء مثبت Windررررows من GitHub
 
 1. ارفع محتويات هذا المجلد إلى مستودع GitHub جديد.
 2. من تبويب **Actions** شغّل **Build Windows Installer** ثم اضغط **Run workflow**.
