@@ -1,5 +1,7 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const { buildDocx } = require('./docx-export');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -14,6 +16,7 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 
@@ -57,6 +60,25 @@ function createWindow() {
   // إلغاء التعليق بالسطر التالي إذا احتجت أدوات المطوّر أثناء التجربة:
   // win.webContents.openDevTools();
 }
+
+// تصدير التقرير إلى Word: الواجهة ترسل نموذج البيانات، والعملية الرئيسية تبني الملف وتحفظه
+ipcMain.handle('export-word', async (event, model, suggestedName) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const safeName = String(suggestedName || 'report.docx').replace(/[\\/:*?"<>|]/g, '-');
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'حفظ التقرير كملف Word',
+      defaultPath: path.join(app.getPath('documents'), safeName),
+      filters: [{ name: 'Word', extensions: ['docx'] }],
+    });
+    if (canceled || !filePath) return { ok: false, canceled: true };
+    const buf = await buildDocx(model);
+    fs.writeFileSync(filePath, buf);
+    return { ok: true, filePath };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || err) };
+  }
+});
 
 app.whenReady().then(() => {
   createWindow();

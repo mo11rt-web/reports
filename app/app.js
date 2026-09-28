@@ -1059,6 +1059,7 @@ function showReportPreview(fromISO, toISO, groups){
     <div class="report-toolbar">
       <button class="btn primary" id="saveReportBtn">💾 حفظ التعديلات</button>
       <button class="btn" id="printReportBtn">🖨 طباعة</button>
+      <button class="btn" id="wordReportBtn">📄 تصدير Word</button>
       <button class="btn" id="addProjToReportBtn">+ إضافة مشروع للتقرير</button>
     </div>
     <div class="add-to-report-wrap" id="addToReportWrap" style="display:none;">
@@ -1174,8 +1175,188 @@ document.getElementById('newReportBtn').addEventListener('click', ()=>{
 });
 document.getElementById('previewBtn').addEventListener('click', renderPreview);
 
+/* ================= تصدير Word: تحويل HTML التقرير إلى نموذج بيانات ================= */
+const WORD_FONT_SIZE_PT = {1:7.5, 2:10, 3:12, 4:13.5, 5:18, 6:24, 7:36}; // قيم <font size=N> بالنقاط
+function cssColorToHex(c){
+  if(!c) return undefined;
+  c = String(c).trim().toLowerCase();
+  if(/^rgba\(.*,\s*0\)$/.test(c) || c==='transparent') return undefined;
+  let m = c.match(/^#([0-9a-f]{6})$/); if(m) return m[1].toUpperCase();
+  m = c.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/); if(m) return (m[1]+m[1]+m[2]+m[2]+m[3]+m[3]).toUpperCase();
+  m = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if(m) return [m[1],m[2],m[3]].map(n=>Math.max(0,Math.min(255,+n)).toString(16).padStart(2,'0')).join('').toUpperCase();
+  return undefined;
+}
+function wordNormAlign(a){
+  a = (a||'').toLowerCase();
+  return ({center:'center', left:'left', right:'right', justify:'justify', start:'right', end:'left'})[a];
+}
+function wordApplyNodeStyle(el, st){
+  const tag = el.tagName.toLowerCase();
+  const out = Object.assign({}, st);
+  if(tag==='b'||tag==='strong') out.bold = true;
+  if(tag==='i'||tag==='em') out.italic = true;
+  if(tag==='u') out.underline = true;
+  if(tag==='s'||tag==='strike'||tag==='del') out.strike = true;
+  if(tag==='font'){
+    const face = el.getAttribute('face'); if(face) out.font = face.split(',')[0].replace(/["']/g,'').trim();
+    const col = cssColorToHex(el.getAttribute('color')); if(col) out.color = col;
+    const sz = parseInt(el.getAttribute('size'),10); if(WORD_FONT_SIZE_PT[sz]) out.sizePt = WORD_FONT_SIZE_PT[sz];
+  }
+  const s = el.style;
+  if(s){
+    if(s.fontWeight && (s.fontWeight==='bold' || parseInt(s.fontWeight,10)>=600)) out.bold = true;
+    if(s.fontStyle==='italic') out.italic = true;
+    const td = s.textDecorationLine || s.textDecoration || '';
+    if(/underline/.test(td)) out.underline = true;
+    if(/line-through/.test(td)) out.strike = true;
+    const col = cssColorToHex(s.color); if(col) out.color = col;
+    const bg = cssColorToHex(s.backgroundColor); if(bg) out.highlight = bg;
+    if(s.fontFamily) out.font = s.fontFamily.split(',')[0].replace(/["']/g,'').trim();
+    const fs = s.fontSize; let mm;
+    if(fs && (mm = fs.match(/^([\d.]+)px$/))) out.sizePt = +mm[1]*0.75;
+    else if(fs && (mm = fs.match(/^([\d.]+)pt$/))) out.sizePt = +mm[1];
+  }
+  return out;
+}
+/* يحوّل محتوى نقطة (فيها تنسيق غني: غامق/لون/خط/قوائم/أسطر) إلى سطور وأجزاء نصية */
+function wordHtmlToLines(root){
+  const lines = [];
+  let cur = null;
+  const startLine = (c)=>{ cur = {runs:[], align:c.align, list:c.list, level:c.level}; lines.push(cur); return cur; };
+  function walk(node, st, c){
+    node.childNodes.forEach(ch=>{
+      if(ch.nodeType===3){
+        const t = ch.nodeValue.replace(/[\r\n\t ]+/g,' ');
+        if(!t.trim() && !cur) return;
+        if(!cur) startLine(c);
+        cur.runs.push(Object.assign({text:t}, st));
+        return;
+      }
+      if(ch.nodeType!==1) return;
+      const tag = ch.tagName.toLowerCase();
+      if(tag==='br'){ if(!cur) startLine(c); cur = null; return; }
+      if(tag==='ul' || tag==='ol'){
+        cur = null;
+        ch.childNodes.forEach(li=>{
+          if(li.nodeType===1 && li.tagName.toLowerCase()==='li'){
+            cur = null;
+            walk(li, wordApplyNodeStyle(li, st), {align:c.align, list:tag, level: c.list ? c.level+1 : 0});
+            cur = null;
+          }
+        });
+        return;
+      }
+      if(tag==='div' || tag==='p'){
+        cur = null;
+        const al = wordNormAlign((ch.style && ch.style.textAlign) || ch.getAttribute('align')) || c.align;
+        walk(ch, wordApplyNodeStyle(ch, st), Object.assign({}, c, {align: al}));
+        cur = null;
+        return;
+      }
+      walk(ch, wordApplyNodeStyle(ch, st), c);
+    });
+  }
+  walk(root, {}, {align:undefined, list:undefined, level:0});
+  const isBlank = l => !l.runs.some(r=>r.text.trim());
+  while(lines.length && isBlank(lines[lines.length-1])) lines.pop();
+  while(lines.length && isBlank(lines[0])) lines.shift();
+  lines.forEach(l=>{
+    if(l.runs.length){
+      l.runs[0].text = l.runs[0].text.replace(/^\s+/,'');
+      l.runs[l.runs.length-1].text = l.runs[l.runs.length-1].text.replace(/\s+$/,'');
+    }
+  });
+  return lines;
+}
+function wordProjectFromEl(el){
+  const nameEl = el.querySelector('.rp-proj-name');
+  const locEl = el.querySelector('.rp-proj-loc');
+  let location = '', lics = [];
+  if(locEl){
+    lics = Array.from(locEl.querySelectorAll('.lic')).map(x=>x.textContent.trim()).filter(Boolean);
+    const clone = locEl.cloneNode(true);
+    clone.querySelectorAll('.lic').forEach(x=>x.remove());
+    location = clone.textContent.replace(/\s+/g,' ').trim();
+    if(location==='—') location = '';
+  }
+  const tag = el.querySelector('.rp-fab-tag');
+  let fab = null;
+  if(tag){
+    const m = tag.className.match(/\b(submitted|pending|custom|none)\b/);
+    fab = {text: tag.textContent.trim(), cls: m ? m[1] : 'none'};
+  }
+  const points = [];
+  el.querySelectorAll('.rp-proj-notes ul.rp-points > li').forEach(li=>{
+    const cls = li.classList.contains('g') ? 'g' : li.classList.contains('r') ? 'r' : '';
+    const lines = wordHtmlToLines(li);
+    if(lines.length) points.push({cls, lines});
+  });
+  const emptyEl = el.querySelector('.rp-proj-notes .rp-empty-note');
+  return {name: nameEl ? nameEl.textContent.trim() : '', location, lics, fab, points, emptyNote: emptyEl ? emptyEl.textContent.trim() : undefined};
+}
+function reportHtmlToWordModel(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const page = doc.querySelector('.rp-page');
+  const model = {title:'', chips:[], sections:[]};
+  if(!page) return model;
+  const h1 = page.querySelector('.rp-header h1');
+  model.title = h1 ? h1.textContent.trim() : '';
+  page.querySelectorAll('.rp-header .rp-chip').forEach(chip=>{
+    const b = chip.querySelector('b');
+    const label = b ? b.textContent.trim() : '';
+    const value = chip.textContent.replace(label,'').trim();
+    model.chips.push({label, value});
+  });
+  let curCat = null, extras = null;
+  Array.from(page.children).forEach(el=>{
+    if(el.classList.contains('rp-header')) return;
+    if(el.classList.contains('rp-cat-title')){
+      const next = el.nextElementSibling;
+      if(next && next.classList.contains('rp-extra')){
+        extras = {type:'extras', title: el.textContent.trim(), items:[]};
+        model.sections.push(extras); curCat = null;
+      } else {
+        curCat = {type:'category', title: el.textContent.trim(), projects:[]};
+        model.sections.push(curCat); extras = null;
+      }
+      return;
+    }
+    if(el.classList.contains('rp-proj') && curCat){ curCat.projects.push(wordProjectFromEl(el)); return; }
+    if(el.classList.contains('rp-extra') && extras){
+      const t = el.querySelector('.rp-extra-title'), x = el.querySelector('.rp-extra-text');
+      extras.items.push({title: t ? t.textContent.trim() : '', text: x ? x.textContent : ''});
+      return;
+    }
+    if(el.classList.contains('empty-note')) model.sections.push({type:'note', text: el.textContent.trim()});
+  });
+  return model;
+}
+async function exportReportToWord(html, fromISO, toISO){
+  if(!window.desktop || !window.desktop.exportWord){
+    alert('تصدير Word متاح داخل تطبيق سطح المكتب فقط.');
+    return;
+  }
+  let model;
+  try{ model = reportHtmlToWordModel(html); }
+  catch(e){ console.error('word model failed', e); alert('تعذّر تجهيز التقرير للتصدير.'); return; }
+  if(!model.sections.length){
+    alert('هذا التقرير محفوظ بصيغة قديمة ولا يمكن تصديره إلى Word. أنشئ تقريراً جديداً وصدّره.');
+    return;
+  }
+  const name = 'التقرير-الأسبوعي_' + fromISO + '_' + toISO + '.docx';
+  try{
+    const res = await window.desktop.exportWord(model, name);
+    if(res && res.ok) alert('تم حفظ ملف Word:\n' + res.filePath);
+    else if(res && !res.canceled) alert('تعذّر حفظ ملف Word.\n' + (res.error||'') + '\nإذا كان الملف مفتوحاً بالوورد أغلقه وحاول مرة ثانية.');
+  }catch(e){
+    console.error('word export failed', e);
+    alert('تعذّر تصدير Word: ' + (e.message||e));
+  }
+}
+
 /* ---------- نافذة تحديد تاريخ التقرير ---------- */
-let pendingPrint = false;
+let pendingMode = 'save';
 function updateReportDateSummary(){
   const f=document.getElementById('rdFrom').value, t=document.getElementById('rdTo').value, i=document.getElementById('rdIssue').value;
   document.getElementById('rdSummary').innerHTML =
@@ -1185,15 +1366,17 @@ function updateReportDateSummary(){
   warn.style.display = changed ? 'block' : 'none';
   warn.textContent = changed ? 'ملاحظة: غيّرت الفترة عن اللي كانت معروضة، فالنقاط الحالية بتنسجّل بالسجل تحت تاريخ «إلى» الجديد.' : '';
 }
-function openReportDateDialog(shouldPrint){
+function openReportDateDialog(mode){
   if(!currentReportModel){ renderPreview(); if(!currentReportModel) return; }
-  pendingPrint = !!shouldPrint;
+  mode = (mode===true) ? 'print' : (!mode || mode===false) ? 'save' : mode;
+  pendingMode = mode;
   document.getElementById('rdFrom').value = currentReportModel.fromISO;
   document.getElementById('rdTo').value = currentReportModel.toISO;
   document.getElementById('rdIssue').value = todayISO();
   document.getElementById('rdError').textContent = '';
-  document.getElementById('rdTitle').textContent = shouldPrint ? 'تاريخ التقرير قبل الطباعة' : 'تاريخ التقرير قبل الحفظ';
-  document.getElementById('reportDateConfirm').textContent = shouldPrint ? '🖨 متابعة للطباعة' : '💾 حفظ';
+  const modeTexts = {save:['تاريخ التقرير قبل الحفظ','💾 حفظ'], print:['تاريخ التقرير قبل الطباعة','🖨 متابعة للطباعة'], word:['تاريخ التقرير قبل تصدير Word','📄 متابعة لتصدير Word']};
+  document.getElementById('rdTitle').textContent = modeTexts[mode][0];
+  document.getElementById('reportDateConfirm').textContent = modeTexts[mode][1];
   updateReportDateSummary();
   document.getElementById('reportDateOverlay').classList.add('show');
   setTimeout(()=>document.getElementById('rdFrom').focus(), 30);
@@ -1205,7 +1388,7 @@ function confirmReportDateDialog(){
   if(!from || !to || !issue){ err.textContent='عبّي التواريخ الثلاثة (من، إلى، الإصدار).'; return; }
   if(from > to){ err.textContent='تاريخ «من» لازم يكون قبل تاريخ «إلى» أو مثله.'; return; }
   closeReportDateDialog();
-  commitAndLog(pendingPrint, {from, to, issue});
+  commitAndLog(pendingMode, {from, to, issue});
 }
 ['rdFrom','rdTo','rdIssue'].forEach(id=>document.getElementById(id).addEventListener('input', updateReportDateSummary));
 document.getElementById('reportDateConfirm').addEventListener('click', confirmReportDateDialog);
@@ -1220,7 +1403,8 @@ function fillPrintArea(html){
   document.getElementById('printArea').innerHTML = html;
 }
 
-function commitAndLog(shouldPrint, dates){
+function commitAndLog(modeArg, dates){
+  const mode = (modeArg===true) ? 'print' : (!modeArg || modeArg===false) ? 'save' : modeArg;
   if(!currentReportModel){ renderPreview(); if(!currentReportModel) return; }
   const origFrom = currentReportModel.fromISO, origTo = currentReportModel.toISO;
   const fromISO = (dates && dates.from) || origFrom;
@@ -1270,9 +1454,11 @@ function commitAndLog(shouldPrint, dates){
   const saved = saveReports();
   if(!saved){ REPORTS = REPORTS.filter(r=>r!==rec); }
 
-  if(shouldPrint){
+  if(mode==='print'){
     fillPrintArea(finalHTML);
     setTimeout(()=>window.print(), 150);
+  }else if(mode==='word'){
+    exportReportToWord(finalHTML, fromISO, toISO);
   }else if(saved){
     alert('تم حفظ التعديلات وتسجيل نسخة في السجل.');
   }
@@ -1289,8 +1475,9 @@ document.getElementById('reportPreviewWrap').addEventListener('click', (e)=>{
     if(block) block.remove();
     return;
   }
-  if(e.target.id==='saveReportBtn'){ openReportDateDialog(false); return; }
-  if(e.target.id==='printReportBtn'){ openReportDateDialog(true); return; }
+  if(e.target.id==='saveReportBtn'){ openReportDateDialog('save'); return; }
+  if(e.target.id==='printReportBtn'){ openReportDateDialog('print'); return; }
+  if(e.target.id==='wordReportBtn'){ openReportDateDialog('word'); return; }
 });
 
 /* ================= HISTORY PAGE ================= */
@@ -1307,6 +1494,7 @@ function renderHistory(){
       <div style="display:flex;gap:6px;">
         <button class="btn small view-hist">عرض</button>
         <button class="btn small print-hist">طباعة</button>
+        <button class="btn small word-hist">Word</button>
         <button class="btn small danger-o del-hist">حذف</button>
       </div>
     </div>
@@ -1323,6 +1511,7 @@ function renderHistory(){
         fillPrintArea(r.snapshotHTML);
         setTimeout(()=>window.print(), 100);
       };
+      document.getElementById('vrWord').onclick = ()=> exportReportToWord(r.snapshotHTML, r.from, r.to);
       document.getElementById('viewReportOverlay').classList.add('show');
     });
   });
@@ -1332,6 +1521,13 @@ function renderHistory(){
       const r = REPORTS.find(x=>x.id===id);
       fillPrintArea(r.snapshotHTML);
       setTimeout(()=>window.print(), 100);
+    });
+  });
+  wrap.querySelectorAll('.word-hist').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const id = e.target.closest('.hist-row').dataset.id;
+      const r = REPORTS.find(x=>x.id===id);
+      if(r) exportReportToWord(r.snapshotHTML, r.from, r.to);
     });
   });
   wrap.querySelectorAll('.del-hist').forEach(btn=>{

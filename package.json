@@ -1,6 +1,6 @@
 {
   "name": "project-tracker",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "نظام متابعة المشاريع - تطبيق سطح مكتب",
   "main": "main.js",
   "author": "",
@@ -21,6 +21,8 @@
     },
     "files": [
       "main.js",
+      "preload.js",
+      "docx-export.js",
       "app/**/*",
       "package.json"
     ],
@@ -46,5 +48,8 @@
       "runAfterFinish": true,
       "artifactName": "Project-Tracker-Setup-${version}.${ext}"
     }
+  },
+  "dependencies": {
+    "docx": "^9.8.0"
   }
 }
