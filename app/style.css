@@ -323,6 +323,15 @@ nav.tabs{display:flex;flex-direction:column;gap:2px;}
 .rte-sep{width:1px;height:20px;background:#DDCBA9;margin:0 4px;}
 .add-to-report-wrap{display:flex;gap:8px;align-items:center;margin:0 0 14px;padding:8px 10px;background:#F7F1E8;border:1px solid #E7DBC8;border-radius:8px;}
 .add-to-report-wrap select{flex:1;height:32px;border:1px solid #E0D4BE;border-radius:6px;background:#fff;padding:0 8px;font-size:13px;}
+/* ---------- تحرير معلومات المشروع (الاسم/الموقع/المقاول/الخدمة/FAB) من داخل التقرير ---------- */
+.rp-proj-side:has(.side-edit-form){flex:0 0 250px;}
+.side-edit-form{display:flex;flex-direction:column;gap:8px;}
+.side-edit-form .field label{font-size:10.5px;}
+.side-edit-form .field input,.side-edit-form .field select{padding:5px 7px;font-size:12.5px;border:1px solid var(--line);border-radius:5px;background:#fff;width:100%;}
+.se-fab-row{display:flex;align-items:center;gap:6px;}
+.se-fab-chk{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;}
+.se-fab-row select{flex:1;}
+.se-fab-custom{margin-top:6px;}
 
 .color-select.mini{display:flex;gap:3px;flex:none;}
 .color-select.mini .color-opt{width:24px;height:24px;}

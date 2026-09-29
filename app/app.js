@@ -845,7 +845,7 @@ function buildReportData(fromISO, toISO, onlyUpdated){
     });
     if(onlyUpdated && pointsInRange.length===0) return;
     groups[cat].push({
-      id:p.id, owner:p.owner, location:p.location, projId:p.projId, contractor:p.contractor,
+      id:p.id, owner:p.owner, location:p.location, projId:p.projId, contractor:p.contractor, category:cat,
       fab: p.fab.status, fabCustomText: p.fab.customText||'', fabApplicable: isFabApplicable(p), points: pointsInRange
     });
   });
@@ -883,15 +883,7 @@ function renderReportHTML(fromISO, toISO, groups, generatedAtISO, extras, opts){
         : '';
       body += `
         <div class="rp-proj" ${editable?`data-proj-id="${it.id}"`:''}>
-          <div class="rp-proj-side">
-            <div class="rp-proj-name">${idx+1}. ${esc(it.owner)}</div>
-            <div class="rp-proj-loc">
-              ${esc(it.location||'—')}
-              ${it.projId?`<span class="lic">${esc(it.projId)}</span>`:''}
-              ${it.contractor?`<span class="lic">مقاول: ${esc(it.contractor)}</span>`:''}
-            </div>
-            ${fabTagHTML}
-          </div>
+          <div class="rp-proj-side">${renderProjSideViewHTML(it, idx)}</div>
           <div class="rp-proj-notes">${notesHTML}</div>
           ${editBtnHTML}
         </div>`;
@@ -923,6 +915,76 @@ function renderReportHTML(fromISO, toISO, groups, generatedAtISO, extras, opts){
       ${body}
       ${extrasHTML}
     </div>`;
+}
+
+
+/* ---------- عرض/تحرير معلومات المشروع (الاسم، الموقع، المقاول، الرخصة، الخدمة، FAB) داخل شاشة التقرير ---------- */
+function renderProjSideViewHTML(it, idx){
+  const fabCls = it.fab==='submitted'?'submitted':it.fab==='pending'?'pending':it.fab==='custom'?'custom':'none';
+  const fabLabel = it.fab==='custom' ? (it.fabCustomText && it.fabCustomText.trim() ? it.fabCustomText.trim() : FAB_META.custom.label) : FAB_META[it.fab].label;
+  const fabTagHTML = it.fabApplicable ? `<span class="rp-fab-tag ${fabCls}">FAB: ${esc(fabLabel)}</span>` : '';
+  return `
+    <div class="rp-proj-name">${idx+1}. ${esc(it.owner)}</div>
+    <div class="rp-proj-loc">
+      ${esc(it.location||'—')}
+      ${it.projId?`<span class="lic">${esc(it.projId)}</span>`:''}
+      ${it.contractor?`<span class="lic">مقاول: ${esc(it.contractor)}</span>`:''}
+    </div>
+    ${fabTagHTML}`;
+}
+function renderProjSideEditHTML(it){
+  const fabOptions = ['none','pending','submitted','custom'].map(s=>
+    `<option value="${s}" ${it.fab===s?'selected':''}>${FAB_META[s].label}</option>`).join('');
+  return `
+    <div class="side-edit-form">
+      <div class="field"><label>الاسم</label><input class="se-owner" value="${esc(it.owner)}"></div>
+      <div class="field"><label>الموقع</label><input class="se-location" value="${esc(it.location||'')}"></div>
+      <div class="field"><label>رقم الرخصة</label><input class="se-projId" value="${esc(it.projId||'')}"></div>
+      <div class="field"><label>المقاول</label><input class="se-contractor" value="${esc(it.contractor||'')}"></div>
+      <div class="field"><label>نوع الخدمة</label><input class="se-category" list="categoryOptions" value="${esc(it.category||'')}"></div>
+      <div class="field">
+        <label>حالة FAB</label>
+        <div class="se-fab-row">
+          <label class="se-fab-chk"><input type="checkbox" class="se-fab-applicable" ${it.fabApplicable?'checked':''}> ينطبق</label>
+          <select class="se-fab-status" ${it.fabApplicable?'':'disabled'}>${fabOptions}</select>
+        </div>
+        <input class="se-fab-custom" placeholder="نص حالة FAB المخصصة" value="${esc(it.fabCustomText||'')}"
+               style="${it.fab==='custom' && it.fabApplicable ? '' : 'display:none;'}">
+      </div>
+    </div>`;
+}
+/* يزامن أي تعديل بمعلومات المشروع من شاشة التقرير مباشرة مع بيانات المشروع الأصلية (تنعكس بكل مكان بالتطبيق) */
+function attachProjSideEditHandlers(sideDiv, it){
+  const p = getProject(it.id);
+  if(!p) return;
+  const sync = (key, val)=>{
+    it[key] = val; p[key] = val;
+    scheduleProjectSave();
+  };
+  sideDiv.querySelector('.se-owner').addEventListener('input', e=> sync('owner', e.target.value));
+  sideDiv.querySelector('.se-location').addEventListener('input', e=> sync('location', e.target.value));
+  sideDiv.querySelector('.se-projId').addEventListener('input', e=> sync('projId', e.target.value));
+  sideDiv.querySelector('.se-contractor').addEventListener('input', e=> sync('contractor', e.target.value));
+  sideDiv.querySelector('.se-category').addEventListener('input', e=>{ it.category = e.target.value; p.category = e.target.value; scheduleProjectSave(); });
+  const applicableChk = sideDiv.querySelector('.se-fab-applicable');
+  const statusSel = sideDiv.querySelector('.se-fab-status');
+  const customInp = sideDiv.querySelector('.se-fab-custom');
+  const refreshFabUI = ()=>{
+    statusSel.disabled = !applicableChk.checked;
+    customInp.style.display = (applicableChk.checked && statusSel.value==='custom') ? '' : 'none';
+  };
+  applicableChk.addEventListener('change', ()=>{
+    it.fabApplicable = applicableChk.checked; p.fab.applicable = applicableChk.checked;
+    scheduleProjectSave(); refreshFabUI();
+  });
+  statusSel.addEventListener('change', ()=>{
+    it.fab = statusSel.value; p.fab.status = statusSel.value;
+    scheduleProjectSave(); refreshFabUI();
+  });
+  customInp.addEventListener('input', ()=>{
+    it.fabCustomText = customInp.value; p.fab.customText = customInp.value;
+    scheduleProjectSave();
+  });
 }
 
 let currentReportModel = null; // {fromISO, toISO, groups}
@@ -962,7 +1024,7 @@ function addProjectToReport(projId){
     }
   });
   currentReportModel.groups[cat].push({
-    id:p.id, owner:p.owner, location:p.location, projId:p.projId, contractor:p.contractor,
+    id:p.id, owner:p.owner, location:p.location, projId:p.projId, contractor:p.contractor, category:cat,
     fab: p.fab.status, fabCustomText: p.fab.customText||'', fabApplicable: isFabApplicable(p), points: pointsInRange
   });
   showReportPreview(currentReportModel.fromISO, currentReportModel.toISO, currentReportModel.groups);
@@ -1026,6 +1088,7 @@ function toggleEditProj(projId, btnEl){
   const block = document.querySelector(`.rp-proj[data-proj-id="${projId}"]`);
   if(!block) return;
   const notesDiv = block.querySelector('.rp-proj-notes');
+  const sideDiv = block.querySelector('.rp-proj-side');
   const item = findItemInModel(projId);
   if(!item) return;
   const editing = block.dataset.editing === '1';
@@ -1035,9 +1098,25 @@ function toggleEditProj(projId, btnEl){
     if(editing){
       item.points = item.points.filter(pt=>(pt.html ? pt.html.replace(/<[^>]*>/g,'').trim() : (pt.text||'').trim()));
       notesDiv.innerHTML = renderPointsHTML(item.points);
+      // لو تغيّر نوع الخدمة أثناء التحرير، ننقل المشروع لمجموعته الجديدة (يعيد رسم كامل الشاشة)
+      // (نقارن بالتصنيف الأصلي المحفوظ عند بدء التحرير، لأن item.category تغيّر مباشرة أثناء الكتابة)
+      const oldCategory = block.dataset.origCategory;
+      const newCategory = (item.category && item.category.trim()) ? item.category.trim() : NO_CAT_LABEL;
+      if(newCategory !== oldCategory){
+        currentReportModel.groups[oldCategory] = (currentReportModel.groups[oldCategory]||[]).filter(it=>it!==item);
+        if(!currentReportModel.groups[newCategory]) currentReportModel.groups[newCategory] = [];
+        item.category = newCategory;
+        currentReportModel.groups[newCategory].push(item);
+        showReportPreview(currentReportModel.fromISO, currentReportModel.toISO, currentReportModel.groups);
+        return;
+      }
+      sideDiv.innerHTML = renderProjSideViewHTML(item, [...block.parentElement.children].filter(c=>c.classList.contains('rp-proj')).indexOf(block));
     } else {
+      block.dataset.origCategory = (item.category && item.category.trim()) ? item.category.trim() : NO_CAT_LABEL;
       notesDiv.innerHTML = renderPointsEditHTML(item.points);
       attachPointsEditHandlers(notesDiv, item);
+      sideDiv.innerHTML = renderProjSideEditHTML(item);
+      attachProjSideEditHandlers(sideDiv, item);
     }
     block.dataset.editing = editing ? '0' : '1';
     btnEl.textContent = editing ? '✏️' : '✓';
@@ -1045,7 +1124,10 @@ function toggleEditProj(projId, btnEl){
     btnEl.title = editing ? 'تحرير' : 'إنهاء التحرير';
   }catch(err){
     console.error('toggleEditProj failed, resetting view', err);
-    try{ notesDiv.innerHTML = renderPointsHTML(item.points); }catch(_){}
+    try{
+      notesDiv.innerHTML = renderPointsHTML(item.points);
+      sideDiv.innerHTML = renderProjSideViewHTML(item, 0);
+    }catch(_){}
     block.dataset.editing = '0';
     btnEl.textContent = '✏️';
     btnEl.classList.remove('editing');
@@ -1158,7 +1240,7 @@ function buildBlankReportData(){
     const cat = catOf(p);
     if(!groups[cat]) groups[cat]=[];
     groups[cat].push({
-      id:p.id, owner:p.owner, location:p.location, projId:p.projId, contractor:p.contractor,
+      id:p.id, owner:p.owner, location:p.location, projId:p.projId, contractor:p.contractor, category:cat,
       fab: p.fab.status, fabCustomText: p.fab.customText||'', fabApplicable: isFabApplicable(p), points: []
     });
   });
