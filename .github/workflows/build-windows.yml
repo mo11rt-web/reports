@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
@@ -32,6 +31,18 @@ jobs:
         run: npm run dist:win
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      # الـ artifact يحسب من مساحة تخزين GitHub Actions (محدودة). المثبّت حجمه كبير،
+      # فنحتفظ به يوم واحد فقط، ونتخطاه بالكامل عند النشر بـ tag لأن الـ Release يحفظ الملف أصلاً.
+      - name: Upload installer artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: project-tracker-windows-installer
+          path: release/*.exe
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
