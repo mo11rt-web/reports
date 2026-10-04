@@ -1,0 +1,32 @@
+# يبني تطبيق "متابعة المشاريع" لويندوز على GitLab CI (Windows runner مجاني بحساب GitLab)
+# يشتغل تلقائياً عند أي push على main، أو عند إنشاء tag يبدأ بحرف v (مثل v1.8.0)،
+# وتقدر كمان تشغّله يدوياً من صفحة CI/CD > Pipelines > Run pipeline بأي وقت.
+
+stages:
+  - build
+
+build-windows:
+  stage: build
+  tags:
+    - saas-windows-medium-amd64   # Windows runner المجاني المستضاف من GitLab
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_TAG'
+
+  before_script:
+    # الصورة ما فيها Node.js ثابت، فنثبته بـ Chocolatey (مثبّت افتراضياً على runners ويندوز بجيت لاب)
+    - choco install nodejs-lts -y --no-progress
+    - refreshenv
+    - node -v
+    - npm -v
+
+  script:
+    - npm ci --no-audit --no-fund
+    - npm run dist:win
+
+  artifacts:
+    name: "project-tracker-windows-installer-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - release/*.exe
+    expire_in: 7 days   # يبقى أسبوع كامل بدون ما يأكل مساحة تخزين دائمة
+    when: on_success
